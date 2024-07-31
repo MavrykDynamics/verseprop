@@ -1,0 +1,74 @@
+{
+    "debtController": [
+        
+        "lambdaAddManager",
+        "lambdaRemoveManager",
+        "lambdaAddAdmin",
+        "lambdaRemoveAdmin",
+
+        "lambdaUpdateMetadata",
+        "lambdaUpdateDebt",
+        "lambdaSetInvestment",
+        "lambdaSetFeeWallet",
+    
+        "lambdaCreateDebt",
+        "lambdaDisburseLoan",
+        "lambdaReturnDeposit",
+        "lambdaAddDeposit",
+        "lambdaWithdrawDeposit",
+        "lambdaPayOffDebt"
+        
+    ],
+    
+    "kyc": [
+        "lambdaSetSuperAdmin",
+        "lambdaClaimSuperAdmin",
+
+        "lambdaSetCountryTransferRule",
+        "lambdaSetKycRegistrar",
+        "lambdaPauseKycRegistrar",
+        "lambdaSetValidInput",
+        "lambdaSetWhitelist",
+        "lambdaSetBlacklist",
+    
+        "lambdaUpdateMetadata",
+        "lambdaMistakenTransfer", 
+
+        "lambdaPauseAll",
+        "lambdaUnpauseAll",
+        "lambdaTogglePauseEntrypoint",
+
+        "lambdaSetMember",
+        "lambdaSetRegistrarAdmin",
+        "lambdaFreezeMember",
+        "lambdaUnfreezeMember"
+    ],
+
+    "superAdmin": [
+        "lambdaSetGeneralAdmin",
+        "lambdaRemoveGeneralAdmin",
+        "lambdaSetContractAdmin",
+        "lambdaRemoveContractAdmin",
+        "lambdaUpdateConfig",
+
+        "lambdaSetSuperAdmin",
+        "lambdaClaimSuperAdmin",
+
+        "lambdaAddSignatory",
+        "lambdaRemoveSignatory",
+
+        "lambdaSetTokenKyc",
+        "lambdaKillToken",
+
+        "lambdaTransfer",
+
+        "lambdaUpdateMetadata",
+        "lambdaMistakenTransfer",
+    
+        "lambdaFlushAction",
+        "lambdaSignAction",
+
+        "lambdaSetLambda"
+    ]
+
+}
