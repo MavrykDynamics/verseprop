@@ -5,6 +5,10 @@ export type debtControllerStorageType = {
 
     admins                  : [string];   
     managers                : [string];   
+
+    superAdmin              : string,
+    newSuperAdmin           : string | null,
+    kycAddress              : string,
     
     feeWallet               : string;
     usdcTokenAddress        : string;

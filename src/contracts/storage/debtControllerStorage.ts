@@ -25,6 +25,10 @@ export const debtControllerStorage : debtControllerStorageType = {
     admins                    : [eve.pkh],
     managers                  : [eve.pkh],
 
+    superAdmin                : eve.pkh,
+    newSuperAdmin             : null,
+    kycAddress                : eve.pkh,
+
     feeWallet                 : eve.pkh,
     usdcTokenAddress          : eve.pkh,
 
