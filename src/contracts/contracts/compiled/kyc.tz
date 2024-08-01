@@ -1,0 +1,970 @@
+{ parameter
+    (or (or (or (or (or (unit %claimSuperAdmin) (list %freezeMember address))
+                    (or (list %mistakenTransfer
+                           (pair (address %to_)
+                                 (nat %amount)
+                                 (or %token
+                                    (or (address %fa12) (pair %fa2 (address %tokenContractAddress) (nat %tokenId)))
+                                    (unit %tez))))
+                        (unit %pauseAll)))
+                (or (or (list %pauseKycRegistrar
+                           (pair (address %kycRegistrarAddress) (bool %pauseBool) (string %actionToPause)))
+                        (or %setBlacklist
+                           (list %addToBlacklist address)
+                           (list %removeFromBlacklist address)))
+                    (or (or %setCountryTransferRule
+                           (or (or (list %addNewCountryTransferRule
+                                      (pair (string %country)
+                                            (set %whitelistCountries string)
+                                            (set %blacklistCountries string)
+                                            (bool %sendingFrozen)
+                                            (bool %receivingFrozen)))
+                                   (list %freezeReceiving (pair (string %country) (bool %freezeBool))))
+                               (or (list %freezeSending (pair (string %country) (bool %freezeBool)))
+                                   (list %updateBlacklistCountries
+                                      (pair (string %country) (string %updateType) (set %countrySet string)))))
+                           (list %updateWhitelistCountries
+                              (pair (string %country) (string %updateType) (set %countrySet string))))
+                        (pair %setKycRegistrar
+                           (string %name)
+                           (address %kycRegistrarAddress)
+                           (set %kycAdminAddresses address)))))
+            (or (or (or (pair %setLambda (string %name) (bytes %func_bytes))
+                        (or %setMember
+                           (or (list %addMember
+                                  (pair (address %memberAddress)
+                                        (string %country)
+                                        (string %region)
+                                        (string %investorType)))
+                               (list %removeMember address))
+                           (list %updateMember
+                              (pair (address %memberAddress)
+                                    (option %country string)
+                                    (option %region string)
+                                    (option %investorType string)
+                                    (option %expireAt timestamp)))))
+                    (or (list %setRegistrarAdmin
+                           (pair (string %updateType) (address %adminAddress) (address %kycRegistrarAddress)))
+                        (address %setSuperAdmin)))
+                (or (or (or %setValidInput
+                           (or (list %country string) (list %investorType string))
+                           (list %region string))
+                        (or %setWhitelist
+                           (list %addToWhitelist address)
+                           (list %removeFromWhitelist address)))
+                    (or (pair %togglePauseEntrypoint
+                           (or %targetEntrypoint
+                              (or (bool %freezeMember) (bool %setMember))
+                              (bool %unfreezeMember))
+                           (unit %empty))
+                        (list %unfreezeMember address)))))
+        (or (unit %unpauseAll)
+            (pair %updateMetadata (string %metadataKey) (bytes %metadataHash)))) ;
+  storage
+    (pair (address %superAdmin)
+          (option %newSuperAdmin address)
+          (big_map %metadata string bytes)
+          (pair %breakGlassConfig
+             (bool %setMemberIsPaused)
+             (bool %freezeMemberIsPaused)
+             (bool %unfreezeMemberIsPaused))
+          (big_map %whitelistLedger address unit)
+          (big_map %blacklistLedger address unit)
+          (big_map %validInputLedger string (set string))
+          (big_map %kycRegistrarLedger
+             address
+             (pair (string %name)
+                   (set %kycAdmins address)
+                   (nat %membersVerified)
+                   (timestamp %createdAt)
+                   (bool %setMemberIsPaused)
+                   (bool %freezeMemberIsPaused)
+                   (bool %unfreezeMemberIsPaused)))
+          (big_map %countryTransferRuleLedger
+             string
+             (pair (set %whitelistCountries string)
+                   (set %blacklistCountries string)
+                   (bool %sendingFrozen)
+                   (bool %receivingFrozen)))
+          (big_map %memberLedger
+             address
+             (pair (string %country)
+                   (string %region)
+                   (string %investorType)
+                   (timestamp %expireAt)
+                   (bool %frozen)
+                   (address %kycRegistrar)))
+          (big_map %lambdaLedger string bytes)) ;
+  code { LAMBDA
+           (pair string (big_map string bytes))
+           bytes
+           { UNPAIR ; GET ; IF_NONE { PUSH nat 2 ; FAILWITH } {} } ;
+         LAMBDA
+           (pair (pair bytes
+                       (or (or (or (or (or unit (list address))
+                                       (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                                   (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                       (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                   (or (list (pair string bool)) (list (pair string string (set string)))))
+                                               (list (pair string string (set string))))
+                                           (pair string address (set address)))))
+                               (or (or (or (or (or (list (pair address string string string)) (list address))
+                                               (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                           (list (pair string address address)))
+                                       (or address (or (or (list string) (list string)) (list string))))
+                                   (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                       (or (list address) unit))))
+                           (pair string bytes)))
+                 address
+                 (option address)
+                 (big_map string bytes)
+                 (pair bool bool bool)
+                 (big_map address unit)
+                 (big_map address unit)
+                 (big_map string (set string))
+                 (big_map address (pair string (set address) nat timestamp bool bool bool))
+                 (big_map string (pair (set string) (set string) bool bool))
+                 (big_map address (pair string string string timestamp bool address))
+                 (big_map string bytes))
+           (pair (list operation)
+                 address
+                 (option address)
+                 (big_map string bytes)
+                 (pair bool bool bool)
+                 (big_map address unit)
+                 (big_map address unit)
+                 (big_map string (set string))
+                 (big_map address (pair string (set address) nat timestamp bool bool bool))
+                 (big_map string (pair (set string) (set string) bool bool))
+                 (big_map address (pair string string string timestamp bool address))
+                 (big_map string bytes))
+           { UNPAIR ;
+             UNPAIR ;
+             UNPACK
+               (lambda
+                  (pair (or (or (or (or (or (unit %lambdaClaimSuperAdmin) (list %lambdaFreezeMember address))
+                                        (or (list %lambdaMistakenTransfer
+                                               (pair (address %to_)
+                                                     (nat %amount)
+                                                     (or %token
+                                                        (or (address %fa12) (pair %fa2 (address %tokenContractAddress) (nat %tokenId)))
+                                                        (unit %tez))))
+                                            (unit %lambdaPauseAll)))
+                                    (or (or (list %lambdaPauseKycRegistrar
+                                               (pair (address %kycRegistrarAddress) (bool %pauseBool) (string %actionToPause)))
+                                            (or %lambdaSetBlacklist
+                                               (list %addToBlacklist address)
+                                               (list %removeFromBlacklist address)))
+                                        (or (or %lambdaSetCountryTransferRule
+                                               (or (or (list %addNewCountryTransferRule
+                                                          (pair (string %country)
+                                                                (set %whitelistCountries string)
+                                                                (set %blacklistCountries string)
+                                                                (bool %sendingFrozen)
+                                                                (bool %receivingFrozen)))
+                                                       (list %freezeReceiving (pair (string %country) (bool %freezeBool))))
+                                                   (or (list %freezeSending (pair (string %country) (bool %freezeBool)))
+                                                       (list %updateBlacklistCountries
+                                                          (pair (string %country) (string %updateType) (set %countrySet string)))))
+                                               (list %updateWhitelistCountries
+                                                  (pair (string %country) (string %updateType) (set %countrySet string))))
+                                            (pair %lambdaSetKycRegistrar
+                                               (string %name)
+                                               (address %kycRegistrarAddress)
+                                               (set %kycAdminAddresses address)))))
+                                (or (or (or (or %lambdaSetMember
+                                               (or (list %addMember
+                                                      (pair (address %memberAddress)
+                                                            (string %country)
+                                                            (string %region)
+                                                            (string %investorType)))
+                                                   (list %removeMember address))
+                                               (list %updateMember
+                                                  (pair (address %memberAddress)
+                                                        (option %country string)
+                                                        (option %region string)
+                                                        (option %investorType string)
+                                                        (option %expireAt timestamp))))
+                                            (list %lambdaSetRegistrarAdmin
+                                               (pair (string %updateType) (address %adminAddress) (address %kycRegistrarAddress))))
+                                        (or (address %lambdaSetSuperAdmin)
+                                            (or %lambdaSetValidInput
+                                               (or (list %country string) (list %investorType string))
+                                               (list %region string))))
+                                    (or (or (or %lambdaSetWhitelist
+                                               (list %addToWhitelist address)
+                                               (list %removeFromWhitelist address))
+                                            (pair %lambdaTogglePauseEntrypoint
+                                               (or %targetEntrypoint
+                                                  (or (bool %freezeMember) (bool %setMember))
+                                                  (bool %unfreezeMember))
+                                               (unit %empty)))
+                                        (or (list %lambdaUnfreezeMember address) (unit %lambdaUnpauseAll)))))
+                            (pair %lambdaUpdateMetadata (string %metadataKey) (bytes %metadataHash)))
+                        (address %superAdmin)
+                        (option %newSuperAdmin address)
+                        (big_map %metadata string bytes)
+                        (pair %breakGlassConfig
+                           (bool %setMemberIsPaused)
+                           (bool %freezeMemberIsPaused)
+                           (bool %unfreezeMemberIsPaused))
+                        (big_map %whitelistLedger address unit)
+                        (big_map %blacklistLedger address unit)
+                        (big_map %validInputLedger string (set string))
+                        (big_map %kycRegistrarLedger
+                           address
+                           (pair (string %name)
+                                 (set %kycAdmins address)
+                                 (nat %membersVerified)
+                                 (timestamp %createdAt)
+                                 (bool %setMemberIsPaused)
+                                 (bool %freezeMemberIsPaused)
+                                 (bool %unfreezeMemberIsPaused)))
+                        (big_map %countryTransferRuleLedger
+                           string
+                           (pair (set %whitelistCountries string)
+                                 (set %blacklistCountries string)
+                                 (bool %sendingFrozen)
+                                 (bool %receivingFrozen)))
+                        (big_map %memberLedger
+                           address
+                           (pair (string %country)
+                                 (string %region)
+                                 (string %investorType)
+                                 (timestamp %expireAt)
+                                 (bool %frozen)
+                                 (address %kycRegistrar)))
+                        (big_map %lambdaLedger string bytes))
+                  (pair (list operation)
+                        (address %superAdmin)
+                        (option %newSuperAdmin address)
+                        (big_map %metadata string bytes)
+                        (pair %breakGlassConfig
+                           (bool %setMemberIsPaused)
+                           (bool %freezeMemberIsPaused)
+                           (bool %unfreezeMemberIsPaused))
+                        (big_map %whitelistLedger address unit)
+                        (big_map %blacklistLedger address unit)
+                        (big_map %validInputLedger string (set string))
+                        (big_map %kycRegistrarLedger
+                           address
+                           (pair (string %name)
+                                 (set %kycAdmins address)
+                                 (nat %membersVerified)
+                                 (timestamp %createdAt)
+                                 (bool %setMemberIsPaused)
+                                 (bool %freezeMemberIsPaused)
+                                 (bool %unfreezeMemberIsPaused)))
+                        (big_map %countryTransferRuleLedger
+                           string
+                           (pair (set %whitelistCountries string)
+                                 (set %blacklistCountries string)
+                                 (bool %sendingFrozen)
+                                 (bool %receivingFrozen)))
+                        (big_map %memberLedger
+                           address
+                           (pair (string %country)
+                                 (string %region)
+                                 (string %investorType)
+                                 (timestamp %expireAt)
+                                 (bool %frozen)
+                                 (address %kycRegistrar)))
+                        (big_map %lambdaLedger string bytes))) ;
+             IF_NONE { DROP 2 ; PUSH nat 3 ; FAILWITH } { DUG 2 ; PAIR ; EXEC } } ;
+         DIG 2 ;
+         UNPAIR ;
+         IF_LEFT
+           { IF_LEFT
+               { IF_LEFT
+                   { IF_LEFT
+                       { IF_LEFT
+                           { DROP ;
+                             DUP ;
+                             GET 20 ;
+                             PUSH string "lambdaClaimSuperAdmin" ;
+                             PAIR ;
+                             DIG 3 ;
+                             SWAP ;
+                             EXEC ;
+                             UNIT ;
+                             LEFT (list address) ;
+                             LEFT (or (list (pair address nat (or (or address (pair address nat)) unit))) unit) ;
+                             LEFT (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                      (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                  (or (list (pair string bool)) (list (pair string string (set string)))))
+                                              (list (pair string string (set string))))
+                                          (pair string address (set address)))) ;
+                             LEFT (or (or (or (or (or (list (pair address string string string)) (list address))
+                                                  (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                              (list (pair string address address)))
+                                          (or address (or (or (list string) (list string)) (list string))))
+                                      (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                          (or (list address) unit))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaFreezeMember" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             RIGHT unit ;
+                             LEFT (or (list (pair address nat (or (or address (pair address nat)) unit))) unit) ;
+                             LEFT (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                      (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                  (or (list (pair string bool)) (list (pair string string (set string)))))
+                                              (list (pair string string (set string))))
+                                          (pair string address (set address)))) ;
+                             LEFT (or (or (or (or (or (list (pair address string string string)) (list address))
+                                                  (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                              (list (pair string address address)))
+                                          (or address (or (or (list string) (list string)) (list string))))
+                                      (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                          (or (list address) unit))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC } }
+                       { IF_LEFT
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaMistakenTransfer" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             LEFT unit ;
+                             RIGHT (or unit (list address)) ;
+                             LEFT (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                      (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                  (or (list (pair string bool)) (list (pair string string (set string)))))
+                                              (list (pair string string (set string))))
+                                          (pair string address (set address)))) ;
+                             LEFT (or (or (or (or (or (list (pair address string string string)) (list address))
+                                                  (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                              (list (pair string address address)))
+                                          (or address (or (or (list string) (list string)) (list string))))
+                                      (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                          (or (list address) unit))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
+                           { DROP ;
+                             DUP ;
+                             GET 20 ;
+                             PUSH string "lambdaPauseAll" ;
+                             PAIR ;
+                             DIG 3 ;
+                             SWAP ;
+                             EXEC ;
+                             UNIT ;
+                             RIGHT (list (pair address nat (or (or address (pair address nat)) unit))) ;
+                             RIGHT (or unit (list address)) ;
+                             LEFT (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                      (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                  (or (list (pair string bool)) (list (pair string string (set string)))))
+                                              (list (pair string string (set string))))
+                                          (pair string address (set address)))) ;
+                             LEFT (or (or (or (or (or (list (pair address string string string)) (list address))
+                                                  (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                              (list (pair string address address)))
+                                          (or address (or (or (list string) (list string)) (list string))))
+                                      (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                          (or (list address) unit))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC } } }
+                   { IF_LEFT
+                       { IF_LEFT
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaPauseKycRegistrar" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             LEFT (or (list address) (list address)) ;
+                             LEFT (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                              (or (list (pair string bool)) (list (pair string string (set string)))))
+                                          (list (pair string string (set string))))
+                                      (pair string address (set address))) ;
+                             RIGHT
+                               (or (or unit (list address))
+                                   (or (list (pair address nat (or (or address (pair address nat)) unit))) unit)) ;
+                             LEFT (or (or (or (or (or (list (pair address string string string)) (list address))
+                                                  (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                              (list (pair string address address)))
+                                          (or address (or (or (list string) (list string)) (list string))))
+                                      (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                          (or (list address) unit))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaSetBlacklist" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             RIGHT (list (pair address bool string)) ;
+                             LEFT (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                              (or (list (pair string bool)) (list (pair string string (set string)))))
+                                          (list (pair string string (set string))))
+                                      (pair string address (set address))) ;
+                             RIGHT
+                               (or (or unit (list address))
+                                   (or (list (pair address nat (or (or address (pair address nat)) unit))) unit)) ;
+                             LEFT (or (or (or (or (or (list (pair address string string string)) (list address))
+                                                  (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                              (list (pair string address address)))
+                                          (or address (or (or (list string) (list string)) (list string))))
+                                      (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                          (or (list address) unit))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC } }
+                       { IF_LEFT
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaSetCountryTransferRule" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             LEFT (pair string address (set address)) ;
+                             RIGHT (or (list (pair address bool string)) (or (list address) (list address))) ;
+                             RIGHT
+                               (or (or unit (list address))
+                                   (or (list (pair address nat (or (or address (pair address nat)) unit))) unit)) ;
+                             LEFT (or (or (or (or (or (list (pair address string string string)) (list address))
+                                                  (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                              (list (pair string address address)))
+                                          (or address (or (or (list string) (list string)) (list string))))
+                                      (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                          (or (list address) unit))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaSetKycRegistrar" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             RIGHT
+                               (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                       (or (list (pair string bool)) (list (pair string string (set string)))))
+                                   (list (pair string string (set string)))) ;
+                             RIGHT (or (list (pair address bool string)) (or (list address) (list address))) ;
+                             RIGHT
+                               (or (or unit (list address))
+                                   (or (list (pair address nat (or (or address (pair address nat)) unit))) unit)) ;
+                             LEFT (or (or (or (or (or (list (pair address string string string)) (list address))
+                                                  (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                              (list (pair string address address)))
+                                          (or address (or (or (list string) (list string)) (list string))))
+                                      (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                          (or (list address) unit))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC } } } }
+               { IF_LEFT
+                   { IF_LEFT
+                       { IF_LEFT
+                           { DIG 2 ;
+                             DIG 3 ;
+                             DROP 2 ;
+                             SWAP ;
+                             DUP ;
+                             SENDER ;
+                             SWAP ;
+                             CAR ;
+                             SWAP ;
+                             COMPARE ;
+                             EQ ;
+                             IF {} { PUSH nat 14 ; FAILWITH } ;
+                             DUP ;
+                             GET 20 ;
+                             DUP 3 ;
+                             CDR ;
+                             DIG 3 ;
+                             CAR ;
+                             SWAP ;
+                             SOME ;
+                             SWAP ;
+                             UPDATE ;
+                             UPDATE 20 ;
+                             NIL operation ;
+                             PAIR }
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaSetMember" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             LEFT (list (pair string address address)) ;
+                             LEFT (or address (or (or (list string) (list string)) (list string))) ;
+                             LEFT (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                      (or (list address) unit)) ;
+                             RIGHT
+                               (or (or (or unit (list address))
+                                       (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                                   (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                       (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                   (or (list (pair string bool)) (list (pair string string (set string)))))
+                                               (list (pair string string (set string))))
+                                           (pair string address (set address))))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC } }
+                       { IF_LEFT
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaSetRegistrarAdmin" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             RIGHT
+                               (or (or (list (pair address string string string)) (list address))
+                                   (list (pair address (option string) (option string) (option string) (option timestamp)))) ;
+                             LEFT (or address (or (or (list string) (list string)) (list string))) ;
+                             LEFT (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                      (or (list address) unit)) ;
+                             RIGHT
+                               (or (or (or unit (list address))
+                                       (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                                   (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                       (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                   (or (list (pair string bool)) (list (pair string string (set string)))))
+                                               (list (pair string string (set string))))
+                                           (pair string address (set address))))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaSetSuperAdmin" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             LEFT (or (or (list string) (list string)) (list string)) ;
+                             RIGHT
+                               (or (or (or (list (pair address string string string)) (list address))
+                                       (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                   (list (pair string address address))) ;
+                             LEFT (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                      (or (list address) unit)) ;
+                             RIGHT
+                               (or (or (or unit (list address))
+                                       (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                                   (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                       (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                   (or (list (pair string bool)) (list (pair string string (set string)))))
+                                               (list (pair string string (set string))))
+                                           (pair string address (set address))))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC } } }
+                   { IF_LEFT
+                       { IF_LEFT
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaSetValidInput" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             RIGHT address ;
+                             RIGHT
+                               (or (or (or (list (pair address string string string)) (list address))
+                                       (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                   (list (pair string address address))) ;
+                             LEFT (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                                      (or (list address) unit)) ;
+                             RIGHT
+                               (or (or (or unit (list address))
+                                       (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                                   (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                       (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                   (or (list (pair string bool)) (list (pair string string (set string)))))
+                                               (list (pair string string (set string))))
+                                           (pair string address (set address))))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaSetWhitelist" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             LEFT (pair (or (or bool bool) bool) unit) ;
+                             LEFT (or (list address) unit) ;
+                             RIGHT
+                               (or (or (or (or (list (pair address string string string)) (list address))
+                                           (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                       (list (pair string address address)))
+                                   (or address (or (or (list string) (list string)) (list string)))) ;
+                             RIGHT
+                               (or (or (or unit (list address))
+                                       (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                                   (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                       (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                   (or (list (pair string bool)) (list (pair string string (set string)))))
+                                               (list (pair string string (set string))))
+                                           (pair string address (set address))))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC } }
+                       { IF_LEFT
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaTogglePauseEntrypoint" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             RIGHT (or (list address) (list address)) ;
+                             LEFT (or (list address) unit) ;
+                             RIGHT
+                               (or (or (or (or (list (pair address string string string)) (list address))
+                                           (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                       (list (pair string address address)))
+                                   (or address (or (or (list string) (list string)) (list string)))) ;
+                             RIGHT
+                               (or (or (or unit (list address))
+                                       (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                                   (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                       (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                   (or (list (pair string bool)) (list (pair string string (set string)))))
+                                               (list (pair string string (set string))))
+                                           (pair string address (set address))))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
+                           { DUP 2 ;
+                             GET 20 ;
+                             PUSH string "lambdaUnfreezeMember" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             LEFT unit ;
+                             RIGHT (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit)) ;
+                             RIGHT
+                               (or (or (or (or (list (pair address string string string)) (list address))
+                                           (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                       (list (pair string address address)))
+                                   (or address (or (or (list string) (list string)) (list string)))) ;
+                             RIGHT
+                               (or (or (or unit (list address))
+                                       (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                                   (or (or (list (pair address bool string)) (or (list address) (list address)))
+                                       (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                                   (or (list (pair string bool)) (list (pair string string (set string)))))
+                                               (list (pair string string (set string))))
+                                           (pair string address (set address))))) ;
+                             LEFT (pair string bytes) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC } } } } }
+           { IF_LEFT
+               { DROP ;
+                 DUP ;
+                 GET 20 ;
+                 PUSH string "lambdaUnpauseAll" ;
+                 PAIR ;
+                 DIG 3 ;
+                 SWAP ;
+                 EXEC ;
+                 UNIT ;
+                 RIGHT (list address) ;
+                 RIGHT (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit)) ;
+                 RIGHT
+                   (or (or (or (or (list (pair address string string string)) (list address))
+                               (list (pair address (option string) (option string) (option string) (option timestamp))))
+                           (list (pair string address address)))
+                       (or address (or (or (list string) (list string)) (list string)))) ;
+                 RIGHT
+                   (or (or (or unit (list address))
+                           (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                       (or (or (list (pair address bool string)) (or (list address) (list address)))
+                           (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                       (or (list (pair string bool)) (list (pair string string (set string)))))
+                                   (list (pair string string (set string))))
+                               (pair string address (set address))))) ;
+                 LEFT (pair string bytes) ;
+                 DIG 2 ;
+                 SWAP ;
+                 DIG 2 ;
+                 PAIR ;
+                 PAIR ;
+                 EXEC }
+               { DUP 2 ;
+                 GET 20 ;
+                 PUSH string "lambdaUpdateMetadata" ;
+                 PAIR ;
+                 DIG 4 ;
+                 SWAP ;
+                 EXEC ;
+                 SWAP ;
+                 RIGHT
+                   (or (or (or (or unit (list address))
+                               (or (list (pair address nat (or (or address (pair address nat)) unit))) unit))
+                           (or (or (list (pair address bool string)) (or (list address) (list address)))
+                               (or (or (or (or (list (pair string (set string) (set string) bool bool)) (list (pair string bool)))
+                                           (or (list (pair string bool)) (list (pair string string (set string)))))
+                                       (list (pair string string (set string))))
+                                   (pair string address (set address)))))
+                       (or (or (or (or (or (list (pair address string string string)) (list address))
+                                       (list (pair address (option string) (option string) (option string) (option timestamp))))
+                                   (list (pair string address address)))
+                               (or address (or (or (list string) (list string)) (list string))))
+                           (or (or (or (list address) (list address)) (pair (or (or bool bool) bool) unit))
+                               (or (list address) unit)))) ;
+                 DIG 2 ;
+                 SWAP ;
+                 DIG 2 ;
+                 PAIR ;
+                 PAIR ;
+                 EXEC } } } ;
+  view "getSuperAdmin" unit address { CDR ; CAR } ;
+  view "getNewSuperAdmin" unit (option address) { CDR ; GET 3 } ;
+  view "view_is_transfer_valid"
+       (pair (pair (nat %amount) (address %from_)) (address %to_) (nat %token_id))
+       bool
+       { UNPAIR ;
+         PUSH bool True ;
+         DUP 3 ;
+         GET 19 ;
+         DUP 3 ;
+         CAR ;
+         CDR ;
+         GET ;
+         IF_NONE
+           { PUSH nat 31 ; FAILWITH }
+           { SWAP ; DROP ; PUSH bool False ; SWAP } ;
+         DUP 4 ;
+         GET 17 ;
+         SWAP ;
+         CAR ;
+         GET ;
+         IF_NONE { PUSH nat 34 ; FAILWITH } {} ;
+         DUP 4 ;
+         GET 11 ;
+         DUP 4 ;
+         CDR ;
+         CAR ;
+         GET ;
+         IF_NONE { PUSH bool False } { DROP ; PUSH bool True } ;
+         DUP 5 ;
+         GET 19 ;
+         DUP 5 ;
+         CDR ;
+         CAR ;
+         GET ;
+         IF_NONE { PUSH bool False } { GET 9 } ;
+         PUSH bool True ;
+         DUP 7 ;
+         GET 19 ;
+         DUP 7 ;
+         CDR ;
+         CAR ;
+         GET ;
+         IF_NONE
+           { PUSH nat 32 ; FAILWITH }
+           { SWAP ; DROP ; PUSH bool False ; SWAP } ;
+         DUP 8 ;
+         GET 17 ;
+         DUP 2 ;
+         CAR ;
+         GET ;
+         IF_NONE { PUSH nat 34 ; FAILWITH } {} ;
+         GET 6 ;
+         DUP 9 ;
+         GET 9 ;
+         DUP 9 ;
+         CDR ;
+         CAR ;
+         GET ;
+         IF_NONE { PUSH bool False } { DROP ; PUSH bool True } ;
+         IF { DROP 9 ; PUSH bool True }
+            { DUP 9 ;
+              GET 9 ;
+              DUP 9 ;
+              CAR ;
+              CDR ;
+              GET ;
+              IF_NONE { PUSH bool False } { DROP ; PUSH bool True } ;
+              IF { SWAP ;
+                   DIG 5 ;
+                   DIG 6 ;
+                   DIG 7 ;
+                   DIG 8 ;
+                   DROP 5 ;
+                   PUSH bool True ;
+                   DIG 2 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 4 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 3 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 4 ;
+                   COMPARE ;
+                   EQ ;
+                   OR ;
+                   OR ;
+                   OR ;
+                   IF { PUSH bool False } { PUSH bool True } }
+                 { PUSH bool True ;
+                   DIG 3 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 7 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 6 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DUP 10 ;
+                   GET 11 ;
+                   DUP 10 ;
+                   CAR ;
+                   CDR ;
+                   GET ;
+                   IF_NONE { PUSH bool False } { DROP ; PUSH bool True } ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DUP 9 ;
+                   GET 3 ;
+                   DIG 7 ;
+                   CAR ;
+                   MEM ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 6 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 8 ;
+                   GET 5 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 8 ;
+                   COMPARE ;
+                   EQ ;
+                   PUSH bool True ;
+                   DIG 10 ;
+                   GET 19 ;
+                   DIG 10 ;
+                   CAR ;
+                   CDR ;
+                   GET ;
+                   IF_NONE { PUSH bool False } { GET 9 } ;
+                   COMPARE ;
+                   EQ ;
+                   OR ;
+                   OR ;
+                   OR ;
+                   OR ;
+                   OR ;
+                   OR ;
+                   OR ;
+                   OR ;
+                   IF { PUSH bool False } { PUSH bool True } } } } ;
+  view "getLambdaOpt"
+       string
+       (option bytes)
+       { UNPAIR ; SWAP ; GET 20 ; SWAP ; GET } }
+

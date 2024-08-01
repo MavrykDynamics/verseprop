@@ -23,7 +23,7 @@ type debtRecordType is [@layout:comb] record [
     startDate            : nat;
     settledDate          : nat;
     nftContractAddress   : address;
-    tokenURI             : string;
+    tokenURI             : bytes;
     currency             : currencyType;
 ]
 
@@ -53,20 +53,26 @@ type createDebtActionType is [@layout:comb] record [
     _term                 : nat;
     _walletAddress        : address; 
     _minInvestmentAmount  : nat;
-    _tokenURI             : string;
+    _tokenURI             : bytes;
     _currency             : currencyType;
 ]
 
 type addDepositActionType is [@layout:comb] record [
     _debtId               : nat;
     _amt                  : nat;
+    _user                 : address;
 ]
 
 type withdrawDepositActionType is [@layout:comb] record [
     _debtId               : nat;
     _tokenId              : nat;
+    _user                 : address;
 ]
 
+type payOffDebtActionType is [@layout:comb] record [
+    _debtId               : nat;
+    _user                 : address;
+]
 
 // ------------------------------------------------------------------------------
 // Lambda Action Types
@@ -93,7 +99,7 @@ type debtControllerLambdaActionType is
     |   LambdaReturnDeposit               of (nat)
     |   LambdaAddDeposit                  of addDepositActionType
     |   LambdaWithdrawDeposit             of withdrawDepositActionType
-    |   LambdaPayOffDebt                  of (nat)
+    |   LambdaPayOffDebt                  of payOffDebtActionType
 
 // ------------------------------------------------------------------------------
 // Storage
@@ -103,6 +109,10 @@ type debtControllerStorageType is [@layout:comb] record [
     
     admins                    : set(address);
     managers                  : set(address);
+
+    superAdmin                : address;
+    newSuperAdmin             : option(address);
+    kycAddress                : address;
     
     feeWallet                 : address;        // Wallet address for collecting fees.
     usdcTokenAddress          : address;        // Address of the USDC token used for investments.

@@ -262,14 +262,14 @@ block {
 
 
 (*  payOffDebt entrypoint *)
-function payOffDebt(const debtId : nat; var s : debtControllerStorageType) : return is
+function payOffDebt(const payOffDebtParams : payOffDebtActionType; var s : debtControllerStorageType) : return is
 block {
 
     // get lambda bytes
     const lambdaBytes : bytes = getLambdaBytes("lambdaPayOffDebt", s.lambdaLedger);
 
     // init debt controller lambda action
-    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaPayOffDebt(debtId);
+    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaPayOffDebt(payOffDebtParams);
 
     // init response
     const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  

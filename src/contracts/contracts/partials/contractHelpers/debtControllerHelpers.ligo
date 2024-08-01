@@ -9,12 +9,12 @@
 // ------------------------------------------------------------------------------
 
 // helper function to get mint entrypoint
-function getMintEntrypoint(const tokenAddress : address) : contract(list(mintOrBurnType)) is
+function getMintEntrypoint(const tokenAddress : address) : contract(list(mintType)) is
     case (Tezos.get_entrypoint_opt(
         "%mint",
-        tokenAddress) : option(contract(list(mintOrBurnType)))) of [
+        tokenAddress) : option(contract(list(mintType)))) of [
                 Some(contr) -> contr
-            |   None -> (failwith(error_MINT_ENTRYPOINT_IN_FA2_CONTRACT_NOT_FOUND) : contract(list(mintOrBurnType)))
+            |   None -> (failwith(error_MINT_ENTRYPOINT_IN_FA2_CONTRACT_NOT_FOUND) : contract(list(mintType)))
         ];
 
 
@@ -91,13 +91,12 @@ block {
 
 
 
-function _mintDebtNFTOperation(const user : address; const tokenId : nat; const amount : nat; const tokenContractAddress : address) : operation is
+function _mintDebtNFTOperation(const user : address; const tokenURI : bytes; const tokenContractAddress : address) : operation is
 block {
 
-    const mintParams : mintOrBurnType = record [
-        token_id  = tokenId;
-        amount    = amount;
-        address   = user;
+    const mintParams : mintType = record [
+        token_metadata  = tokenURI;
+        address         = user;
     ];
 
     const mintOperation : operation = Tezos.transaction(
@@ -145,6 +144,43 @@ block {
 // ------------------------------------------------------------------------------
 // Helper Functions End
 // ------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------
+// RWA Token Origination Helpers Begin
+// ------------------------------------------------------------------------------
+
+// helper funtion to prepare new RWA Token storage
+function prepareRwaTokenStorage(const s : debtControllerStorageType) : rwaTokenStorageType is 
+block {
+
+    // Prepare storage
+    const originatedRwaTokenStorageType : rwaTokenStorageType = record [
+
+        superAdmin                  = s.superAdmin;
+        newSuperAdmin               = (None : option(address));
+
+        kycAddress                  = s.kycAddress;
+        isPaused                    = True;
+
+        metadata                    = big_map [];
+        token_metadata              = big_map [];
+        total_supply                = 0n;
+
+        userChunkLedger             = big_map [];
+        snapshotLedger              = big_map [];
+
+        ledger                      = big_map [];
+        ownerLedger                 = big_map [];
+        operators                   = big_map [];
+    ];
+
+} with originatedRwaTokenStorageType 
+
+// ------------------------------------------------------------------------------
+// RWA Token Origination Helpers End
+// ------------------------------------------------------------------------------
+
 
 
 // ------------------------------------------------------------------------------

@@ -275,8 +275,18 @@ block {
 
                 onlyAdmin(s.admins); // change from original where it is onlyOwner
 
-                // todo: originate nft contract address
-                const nftContract : address = Tezos.get_sender(); // temp
+                // Prepare new RWA Token storage
+                const originatedRwaTokenStorage : rwaTokenStorageType = prepareRwaTokenStorage(s);
+
+                // Create operation to originate RWA Token
+                const rwaTokenOrigination : (operation * address) = createRwaTokenFunc(
+                    (None: option(key_hash)), 
+                    0tez,
+                    originatedRwaTokenStorage
+                );
+
+                // nft contract address
+                const nftContract : address = rwaTokenOrigination.1;
 
                 const currentDebtCounter : nat = s.debtCounter;
 
@@ -445,10 +455,9 @@ block {
     case debtControllerLambdaAction of [
         |   LambdaAddDeposit(addDepositParams) -> {
 
-                // todo: allow admin to specify the user instead of Tezos.get_sender()
-
-                const _debtId : nat = addDepositParams._debtId;
-                const _amt : nat    = addDepositParams._amt;
+                const _debtId : nat     = addDepositParams._debtId;
+                const _amt : nat        = addDepositParams._amt;
+                const _user : address   = addDepositParams._user;
 
                 var debt : debtRecordType := case s.debtLedger[_debtId] of [
                         Some(_record) -> _record
@@ -470,14 +479,14 @@ block {
                 } else if debt.currency = USDC then {
 
                     if _amt >= debt.minInvestmentAmount then skip else failwith("Minimum investment amount not sufficient");
-                    operations := transferFa2Token(Tezos.get_self_address(), Tezos.get_sender(), _amt, 0n, s.usdcTokenAddress) # operations;
+                    operations := transferFa2Token(Tezos.get_self_address(), _user, _amt, 0n, s.usdcTokenAddress) # operations;
 
                 };
 
                 // Mint NFT which is associated with the investment amount
                 const nftContract : address = debt.nftContractAddress;
                 const tokenId : nat = abs(getNextTokenId(nftContract));
-                operations := _mintDebtNFTOperation(Tezos.get_sender(), tokenId, 1n, nftContract) # operations;
+                operations := _mintDebtNFTOperation(_user, debt.tokenURI, nftContract) # operations;
                 s := _setInvestment(_debtId, tokenId, _amt, s);
 
                 // Update total investment amount on the debt
@@ -505,10 +514,9 @@ block {
     case debtControllerLambdaAction of [
         |   LambdaWithdrawDeposit(withdrawDepositParams) -> {
 
-                // todo: allow admin to specify the user instead of Tezos.get_sender()
-
                 const _debtId : nat   = withdrawDepositParams._debtId;
                 const _tokenId : nat  = withdrawDepositParams._tokenId;
+                const _user : address = withdrawDepositParams._user;
 
                 var debt : debtRecordType := case s.debtLedger[_debtId] of [
                         Some(_record) -> _record
@@ -519,7 +527,7 @@ block {
                 if debt.totalInvestment > 0n then skip else failwith("No funds left to settle");
 
                 const nftContract : address = debt.nftContractAddress;
-                if ownerOf(_tokenId, nftContract) = Tezos.get_sender() then skip else failwith("Caller is not the owner of the NFT");
+                if ownerOf(_tokenId, nftContract) = _user then skip else failwith("User is not the owner of the NFT");
 
                 const investmentAmount : nat = case s.investmentLedger[_debtId] of [
                         Some(_map) -> {
@@ -540,11 +548,11 @@ block {
 
                 if debt.currency = MAV then {
                     if (Tezos.get_balance() / 1mutez) >= totalWithdrawal then skip else failwith("Insufficient contract balance");
-                    operations := transferTez((Tezos.get_contract_with_error(Tezos.get_sender(), "Error. Tez could not be sent to address.") : contract(unit)), totalWithdrawal * 1mutez) # operations;
+                    operations := transferTez((Tezos.get_contract_with_error(_user, "Error. Tez could not be sent to address.") : contract(unit)), totalWithdrawal * 1mutez) # operations;
                 } else if debt.currency = USDC then {
                     const balanceOfContract : nat = getBalanceOf(Tezos.get_self_address(), s.usdcTokenAddress);
                     if balanceOfContract >= totalWithdrawal then skip else failwith("Insufficient contract balance");
-                    operations := transferFa2Token(Tezos.get_self_address(), Tezos.get_sender(), totalWithdrawal, 0n, s.usdcTokenAddress) # operations;
+                    operations := transferFa2Token(Tezos.get_self_address(), _user, totalWithdrawal, 0n, s.usdcTokenAddress) # operations;
                 };
 
                 debt.totalInvestment  := abs(debt.totalInvestment - investmentAmount);
@@ -568,9 +576,10 @@ block {
     var operations : list(operation) := nil;
 
     case debtControllerLambdaAction of [
-        |   LambdaPayOffDebt(_debtId) -> {
+        |   LambdaPayOffDebt(payOffDebtParams) -> {
 
-                // todo: allow admin to specify the user instead of Tezos.get_sender()
+                const _debtId : nat   = payOffDebtParams._debtId;
+                const _user : address = payOffDebtParams._user;
                 
                 var debt : debtRecordType := case s.debtLedger[_debtId] of [
                         Some(_record) -> _record
@@ -586,7 +595,7 @@ block {
                     if (Tezos.get_amount() / 1mutez) >= totalPayment then skip else failwith("Insufficient payment");
                     operations := transferTez((Tezos.get_contract_with_error(Tezos.get_self_address(), "Error. Tez could not be sent to address.") : contract(unit)), Tezos.get_amount()) # operations;
                 } else if debt.currency = USDC then {
-                    operations := transferFa2Token(Tezos.get_sender(), Tezos.get_self_address(), totalPayment, 0n, s.usdcTokenAddress) # operations;
+                    operations := transferFa2Token(_user, Tezos.get_self_address(), totalPayment, 0n, s.usdcTokenAddress) # operations;
                 };
 
                 debt.status           := SETTLED;

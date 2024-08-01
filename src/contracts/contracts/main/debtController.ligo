@@ -18,18 +18,28 @@
 // Transfer Helpers
 #include "../partials/shared/transferHelpers.ligo"
 
-// Constants
-// #include "../partials/shared/constants.ligo"
-
 // ------------------------------------------------------------------------------
 // Contract Types
 // ------------------------------------------------------------------------------
 
 // RWA Token Types
-#include "../partials/contractTypes/rwaTokenTypes.ligo"
+#include "../partials/contractTypes/rwaTokenNonFungibleTypes.ligo"
 
 // DebtController Types
 #include "../partials/contractTypes/debtControllerTypes.ligo"
+
+// ------------------------------------------------------------------------------
+// Create Model (RWA Token) Type
+// ------------------------------------------------------------------------------
+
+type createRwaTokenFuncType is (option(key_hash) * tez * rwaTokenStorageType) -> (operation * address)
+const createRwaTokenFunc: createRwaTokenFuncType =
+[%Michelson ( {| { UNPPAIIR ;
+                  CREATE_CONTRACT
+#include "../compiled/rwaTokenNonFungible.tz"
+        ;
+          PAIR } |}
+: createRwaTokenFuncType)];
 
 // ------------------------------------------------------------------------------
 
@@ -56,7 +66,7 @@ type action is
     |   ReturnDeposit               of (nat)
     |   AddDeposit                  of addDepositActionType
     |   WithdrawDeposit             of withdrawDepositActionType
-    |   PayOffDebt                  of (nat)
+    |   PayOffDebt                  of payOffDebtActionType
 
         // Lambda Entrypoints
     |   SetLambda                   of setLambdaType

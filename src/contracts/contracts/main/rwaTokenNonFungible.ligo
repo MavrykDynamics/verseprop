@@ -1,31 +1,47 @@
 // ------------------------------------------------------------------------------
-// Contract Types
+// Error Codes
 // ------------------------------------------------------------------------------
 
-// Freeze Rule Engine Types
-#include "../partials/contractTypes/freezeRuleEngineTypes.ligo"
+// Error Codes
+#include "../partials/errors.ligo"
+
+// ------------------------------------------------------------------------------
+// Shared Helpers and Types
+// ------------------------------------------------------------------------------
 
 // Shared Helpers
 #include "../partials/shared/sharedHelpers.ligo"
 
+// Transfer Helpers
+#include "../partials/shared/transferHelpers.ligo"
+
+// Constants
+#include "../partials/shared/constants.ligo"
+
+// ------------------------------------------------------------------------------
+// Contract Types
+// ------------------------------------------------------------------------------
+
+// KYC Types
+#include "../partials/contractTypes/kycTypes.ligo"
+
 // RWA Token Types
-#include "../partials/contractTypes/rwaTokenTypes.ligo"
+#include "../partials/contractTypes/rwaTokenNonFungibleTypes.ligo"
 
 // ------------------------------------------------------------------------------
 
 type action is
 
-        // Super Admin Entrypoints
+        // SuperAdmin Entrypoints
     |   SetSuperAdmin             of (address)
     |   ClaimSuperAdmin           of unit
     |   SetTokenKyc               of (address)
     |   Kill                      of unit 
         
         // Admin Entrypoints
-    |   UpdateMetadata            of updateMetadataType
     |   SetTokenMetadata          of list(tokenMetadataType)
-    |   Mint                      of list(mintOrBurnType)
-    |   Burn                      of list(mintOrBurnType)
+    |   Mint                      of list(mintType)
+    |   Burn                      of list(burnType)
     |   Pause                     of unit
     |   Unpause                   of unit
 
@@ -40,30 +56,14 @@ const noOperations : list (operation) = nil;
 
 
 // ------------------------------------------------------------------------------
-// Errors Begin
+// Constants Begin
 // ------------------------------------------------------------------------------
 
-[@inline] const error_ADMIN_NOT_FOUND                                                   = 1_00n;
-[@inline] const error_NOT_ADMIN                                                         = 1_01n;
-[@inline] const error_NOT_SUPER_ADMIN                                                   = 1_02n;
-[@inline] const error_NO_NEW_SUPER_ADMIN_FOUND                                          = 1_03n;
-[@inline] const error_SENDER_IS_NOT_NEW_SUPER_ADMIN                                     = 1_04n;
-
-[@inline] const error_TOKEN_EXISTS                                                      = 1_05n;
-[@inline] const error_TOKEN_UNDEFINED                                                   = 1_06n;
-[@inline] const error_TOKEN_PAUSED                                                      = 1_07n;
-
-[@inline] const error_USER_NOT_FOUND                                                    = 1_08n;
-[@inline] const error_CANNOT_TRANSFER                                                   = 1_09n;
-[@inline] const error_INSUFFICIENT_BALANCE                                              = 1_10n;
-
-[@inline] const error_VIEW_IS_TRANSFER_VALID_NOT_FOUND                                  = 1_11n;
-[@inline] const error_INVALID_START_COUNTER                                             = 1_12n;
-[@inline] const error_START_COUNTER_SNAPSHOT_TIMESTAMP_GREATER_THAN_BALANCE_TIMESTAMP   = 1_13n;
-
+const is_admin : nat = 1n;
+const is_proposed_admin : nat = 2n;
 
 // ------------------------------------------------------------------------------
-// Errors End
+// Constants End
 // ------------------------------------------------------------------------------
 
 
@@ -132,12 +132,12 @@ block {
 function verifySufficientBalance(const ledger_key : ledgerKeyType; const amount : nat; const s : rwaTokenStorageType) : unit is
 block {
 
-    const ledger_balance : nat = case s.ledger[ledger_key] of [
+    const balance : nat = case s.ledger[ledger_key] of [
             Some(_v) -> _v
         |   None     -> 0n
     ];
 
-    if ledger_balance < amount then failwith(error_INSUFFICIENT_BALANCE) else skip;
+    if balance < amount then failwith(error_INSUFFICIENT_BALANCE) else skip;
 
 } with unit
 
@@ -246,11 +246,8 @@ block{
 (* total_supply
     - Given a token id allows the consumer to view the current total supply.
 *)
-[@view] function total_supply(const token_id : nat; const s : rwaTokenStorageType) : nat is
-    case Big_map.find_opt(token_id, s.total_supply) of [
-            Some (_v) -> _v
-        |   None      -> 0n
-    ]
+[@view] function total_supply(const _ : unit; var s : rwaTokenStorageType) : nat is
+    s.total_supply
 
 
 
@@ -263,6 +260,15 @@ block{
             Some (_v) -> _v
         |   None      -> 0n
     ]
+
+
+
+(* view_balance_of
+    - Given a ledger key (consisting of token_id = sp.TNat, owner = sp.TAddress) allows the 
+      consumer to view the current balance.
+*)
+[@view] function owner_of(const tokenId : nat; var s : rwaTokenStorageType) : option(address) is
+    Big_map.find_opt(tokenId, s.ownerLedger)
 
 
 
@@ -469,7 +475,7 @@ block {
 
     // check if sender is not new super admin 
     if sender =/= newSuperAdmin then failwith(error_SENDER_IS_NOT_NEW_SUPER_ADMIN) else skip;
-
+    
     // set new super admin
     s.superAdmin    := newSuperAdmin;
     s.newSuperAdmin := None;
@@ -504,7 +510,7 @@ block{
     s.isPaused          := True;
     s.ledger            := (big_map[] : ledgerType);
     s.token_metadata    := (big_map[] : tokenMetadataLedgerType);
-    s.total_supply      := (big_map[] : totalSupplyType);
+    s.total_supply      := 0n;
     s.operators         := (big_map[] : operatorsType);
 
 } with (noOperations, s)
@@ -518,23 +524,6 @@ block{
 // ------------------------------------------------------------------------------
 // Admin Entrypoints Begin
 // ------------------------------------------------------------------------------
-
-(*  updateMetadata entrypoint *)
-function updateMetadata(const updateMetadataParams : updateMetadataType; var s : rwaTokenStorageType) : return is
-block {
-
-    // verify is admin
-    verifySenderIsAdmin(s);
-
-    const metadataKey   : string = updateMetadataParams.metadataKey;
-    const metadataHash  : bytes  = updateMetadataParams.metadataHash;
-    
-    s.metadata[metadataKey] := metadataHash;
-
-} with (noOperations, s)
-
-
-
 
 (*  setTokenMetadata entrypoint *)
 function setTokenMetadata(const token_metadata_list : list(tokenMetadataType); var s : rwaTokenStorageType) : return is
@@ -556,14 +545,15 @@ block {
 (* mint entrypoint 
    - Allows minting of new tokens to the defined recipient address, only RWA token admins can do this
 *)
-function mint(const mintList : list(mintOrBurnType); var s : rwaTokenStorageType) : return is
+function mint(const mintList : list(mintType); var s : rwaTokenStorageType) : return is
 block {
 
     for mintParams in list mintList block {
 
-        const tokenId       : nat     = mintParams.token_id;
-        const amount        : nat     = mintParams.amount;
-        const userAddress   : address = mintParams.address;
+        const tokenId       : nat       = s.total_supply;
+        const amount        : nat       = 1n;
+        const userAddress   : address   = mintParams.address;
+        const token_metadata : bytes    = mintParams.token_metadata;
 
         // verify is admin
         verifySenderIsAdmin(s);
@@ -573,7 +563,10 @@ block {
             token_id    = tokenId;
         ];
 
-        verifyTokenIsDefined(tokenId, s);
+        s.token_metadata[tokenId] := record [
+            token_id   = tokenId;
+            token_info = map["" -> token_metadata];
+        ];
 
         const userTokenBalance : nat = case s.ledger[recipient_ledger_key] of [
                 Some(_v) -> _v
@@ -598,15 +591,13 @@ block {
 
         // update storage
         s.ledger[recipient_ledger_key]      := newUserTokenBalance;
+        s.ownerLedger[tokenId]              := userAddress;
 
         userChunkRecord.chunkCounter        := userSnapshotCounter/1000n + 1n;
         userChunkRecord.snapshotCounter     := userSnapshotCounter;
         s.userChunkLedger[userAddress]      := userChunkRecord;
 
-        s.total_supply[tokenId] := case s.total_supply[tokenId] of [
-                Some (_v) -> _v + amount
-            |   None      -> amount
-        ];
+        s.total_supply := s.total_supply + 1n;
 
     }
 
@@ -617,13 +608,13 @@ block {
 (* burn entrypoint 
     - Allows burning tokens on the defined recipient address, only RWA token admins can do this
 *)
-function burn(const burnList : list(mintOrBurnType); var s : rwaTokenStorageType) : return is
+function burn(const burnList : list(burnType); var s : rwaTokenStorageType) : return is
 block {
 
     for burnParams in list burnList block {
 
         const tokenId       : nat     = burnParams.token_id;
-        const amount        : nat     = burnParams.amount;
+        const amount        : nat     = 1n;
         const userAddress   : address = burnParams.address;
 
         // verify is admin
@@ -657,16 +648,12 @@ block {
         // take user balance snaphsot
         s := takeUserBalanceSnapshot(tokenId, userAddress, userTokenChunk, userSnapshotCounter, newUserTokenBalance, s);
 
-        s.ledger[recipient_ledger_key] := newUserTokenBalance;
+        s.ledger[recipient_ledger_key]      := newUserTokenBalance;
+        s.ownerLedger[tokenId]              := zeroAddress;
 
         userChunkRecord.chunkCounter        := userSnapshotCounter/1000n + 1n;
         userChunkRecord.snapshotCounter     := userSnapshotCounter;
         s.userChunkLedger[userAddress]      := userChunkRecord;
-
-        s.total_supply[tokenId] := case s.total_supply[tokenId] of [
-                Some (_v) -> if _v > amount then abs(_v - amount) else 0n
-            |   None      -> 0n
-        ];
 
         if newUserTokenBalance = 0n then remove recipient_ledger_key from map s.ledger else skip;
 
@@ -695,11 +682,10 @@ block{
 *)
 function unpause(var s : rwaTokenStorageType) : return is
 block{
-    
-    // verify sender is admin
+
+    // verify is admin
     verifySenderIsAdmin(s);
     s.isPaused := False;
-
 
 } with (noOperations, s)
 
@@ -804,6 +790,8 @@ block{
                     // update storage
                     accumulator.ledger[from_user]           := newFromUserTokenBalance;
                     accumulator.ledger[to_user]             := newToUserTokenBalance;
+
+                    accumulator.ownerLedger[tokenId]        := receiver;
 
                     fromUserChunkRecord.chunkCounter        := fromUserSnapshotCounter/1000n + 1n;
                     fromUserChunkRecord.snapshotCounter     := fromUserSnapshotCounter;
@@ -910,7 +898,6 @@ function main (const action : action; const s : rwaTokenStorageType) : return is
         |   Kill (_params)                      -> kill(s)
 
             // Admin Entrypoints
-        |   UpdateMetadata (params)             -> updateMetadata(params, s)
         |   SetTokenMetadata (params)           -> setTokenMetadata(params, s)
         |   Mint (params)                       -> mint(params, s)
         |   Burn (params)                       -> burn(params, s)
