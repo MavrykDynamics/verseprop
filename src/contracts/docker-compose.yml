@@ -18,6 +18,7 @@ services:
 
   api:
     restart: always
+    platform: linux/amd64
     image: ghcr.io/baking-bad/bcdhub-api:${TAG}
     environment:
       - BCD_ENV=sandbox
@@ -38,6 +39,7 @@ services:
 
   indexer:
     restart: always
+    platform: linux/amd64
     image: ghcr.io/baking-bad/bcdhub-indexer:${TAG}
     environment:
       - BCD_ENV=sandbox
@@ -57,9 +59,19 @@ services:
     container_name: mavryk-sandbox
     restart: always
     image: oxheadalpha/flextesa:20230313
-    command: limabox start
+    command: >
+      flextesa mini-net 
+      --root "/tmp/mini-box" 
+      --size 3
+      --set-history-mode N000:archive 
+      --number-of-boot 3
+      --balance-of-bootstrap-accounts tez:100_000_000 
+      --time-b 3 
+      --add-bootstrap-account="alice,edpkvGfYw3LyB1UcCahKQk4rF2tvbMUk8GFiTuMjL75uGXrpvKXhjn,tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb,unencrypted:edsk3QoqBuvdamxouPhin7swCvkQNgq4jP5KZPbwWNnwdZpSpJiEbq@2_000_000_000_000" 
+      --add-bootstrap-account="bob,edpkurPsQ8eUApnLUJ9ZPDvu98E8VNj4KtJa1aZr16Cr5ow5VHKnz4,tz1aSkwEot3L2kmUvcoxzjMomb9mvBNuzFK6,unencrypted:edsk3RFfvaFaxbHx8BMtEW1rKQcPtDML3LXjNqMNLCzC3wLC1bWbAt@2_000_000_000_000" 
+      --until-level 200_000_000 
+      --protocol-kind "Mumbai"
     environment:
-      - block_time=3
       - flextesa_node_cors_origin=*
     ports:
       - 127.0.0.1:20000:20000
@@ -72,6 +84,7 @@ services:
   gui:
     container_name: sandbox-gui
     restart: always
+    platform: linux/amd64
     image: ghcr.io/baking-bad/bcdhub-gui:${TAG}
     depends_on:
       - api
