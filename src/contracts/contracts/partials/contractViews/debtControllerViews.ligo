@@ -22,7 +22,7 @@
 * @param _amount The amount to calculate the interest on
 * @return The calculated interest.
 *)
-[@view] function calculateInterest(const calculateInterestParams : (nat * nat); const s : debtControllerStorageType) : option(nat) is
+[@view] function calculateInterest(const calculateInterestParams : (nat * nat); const s : debtControllerStorageType) : nat is
 block {
 
     const _debtId : nat = calculateInterestParams.0;
@@ -36,12 +36,12 @@ block {
     var timePassed : nat := 0n;
 
     // Check if the debt is settled
-    if debtRecord.settledDate = 0 then {
+    if debtRecord.settledDate = 0n then {
         // If not settled, use current time to calculate time passed
-        timePassed = abs(Tezos.get_level() - debtRecord.startDate);
+        timePassed := abs(Tezos.get_level() - debtRecord.startDate);
     } else {
         // If settled, use settledDate to calculate time passed
-        timePassed = abs(debtRecord.settledDate - debtRecord.startDate);
+        timePassed := abs(debtRecord.settledDate - debtRecord.startDate);
     };
 
     const dailyInterest : nat   = debtRecord.interestRate / 10000n;

@@ -19,12 +19,12 @@ function getMintEntrypoint(const tokenAddress : address) : contract(list(mintOrB
 
 
 // helper function to get burn entrypoint
-function getBurnEntrypoint(const tokenAddress : address) : contract(list(mintOrBurnType)) is
+function getBurnEntrypoint(const tokenAddress : address) : contract(list(nat)) is
     case (Tezos.get_entrypoint_opt(
         "%burn",
-        tokenAddress) : option(contract(list(mintOrBurnType)))) of [
+        tokenAddress) : option(contract(list(nat)))) of [
                 Some(contr) -> contr
-            |   None -> (failwith(error_BURN_ENTRYPOINT_IN_FA2_CONTRACT_NOT_FOUND) : contract(list(mintOrBurnType)))
+            |   None -> (failwith(error_BURN_ENTRYPOINT_IN_FA2_CONTRACT_NOT_FOUND) : contract(list(nat)))
         ];
 
 // ------------------------------------------------------------------------------
@@ -40,7 +40,7 @@ function getBurnEntrypoint(const tokenAddress : address) : contract(list(mintOrB
 function getBalanceOf(const user : address; const tokenContractAddress : address) : nat is 
 block {
 
-    const getBalanceView : option(nat) = Tezos.call_view("get_balance", [user, 0n], tokenContractAddress);
+    const getBalanceView : option(nat) = Tezos.call_view("get_balance", (user, 0n), tokenContractAddress);
     const balance : nat = case getBalanceView of [
             Some(_nat) -> _nat
         |   None       -> 0n
@@ -53,7 +53,7 @@ block {
 function ownerOf(const tokenId : nat; const tokenContractAddress : address) : address is 
 block {
 
-    const ownerOfView : option(nat) = Tezos.call_view("owner_of", tokenId, tokenContractAddress);
+    const ownerOfView : option(address) = Tezos.call_view("owner_of", tokenId, tokenContractAddress);
     const owner : address = case ownerOfView of [
             Some(_address) -> _address
         |   None           -> failwith("Owner not found.")
@@ -63,22 +63,24 @@ block {
 
 
 
-function getNextTokenId(const tokenContractAddress : address) : nat is 
+function getNextTokenId(const tokenContractAddress : address) : int is 
 block {
 
     const nextTokenView : option(nat) = Tezos.call_view("next_token_id", unit, tokenContractAddress);
-    const nextTokenId : nat = case nextTokenView of [
+    const nextTokenIdNat : nat = case nextTokenView of [
             Some(_nat) -> _nat
         |   None       -> 0n
     ];
+    const nextTokenId : int = int(nextTokenIdNat);
 
 } with nextTokenId
 
 
 
-function getTotalSupply(const tokenId : nat; const tokenContractAddress : address) : nat is 
+function getTotalSupply(const tokenIdInt : int; const tokenContractAddress : address) : nat is 
 block {
 
+    const tokenId : nat = abs(tokenIdInt);
     const getTotalSupplyView : option(nat) = Tezos.call_view("view_total_supply", tokenId, tokenContractAddress);
     const totalSupply : nat = case getTotalSupplyView of [
             Some(_nat) -> _nat
@@ -126,12 +128,13 @@ block {
 
     var investmentMap : tokenToInvestmentMapType := case s.investmentLedger[debtId] of [
             Some(_map) -> {
-                const investmentAmount : nat = case _map[tokenId] of [
+                var tempInvestmentMap := _map;
+                const investmentAmount : nat = case tempInvestmentMap[tokenId] of [
                         Some(_) -> failwith("TokenId under provided debtId already exists")
                     |   None    -> amount
                 ]; 
-                _map[tokenId] := investmentAmount;
-            } with _map
+                tempInvestmentMap[tokenId] := investmentAmount;
+            } with tempInvestmentMap
         |   None       -> map[tokenId -> amount]
     ];
 
@@ -142,6 +145,27 @@ block {
 // ------------------------------------------------------------------------------
 // Helper Functions End
 // ------------------------------------------------------------------------------
+
+
+// ------------------------------------------------------------------------------
+// Lambda Helper Functions Begin
+// ------------------------------------------------------------------------------
+
+// helper function to unpack and execute entrypoint logic stored as bytes in lambdaLedger
+function unpackLambda(const lambdaBytes : bytes; const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is 
+block {
+
+    const res : return = case (Bytes.unpack(lambdaBytes) : option(debtControllerUnpackLambdaFunctionType)) of [
+            Some(f) -> f(debtControllerLambdaAction, s)
+        |   None    -> failwith(error_UNABLE_TO_UNPACK_LAMBDA)
+    ];
+
+} with (res.0, res.1)
+
+// ------------------------------------------------------------------------------
+// Lambda Helper Functions End
+// ------------------------------------------------------------------------------
+
 
 // ------------------------------------------------------------------------------
 //

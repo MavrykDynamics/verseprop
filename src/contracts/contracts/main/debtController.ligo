@@ -9,6 +9,9 @@
 // Shared Helpers and Types
 // ------------------------------------------------------------------------------
 
+// Access Control Helpers
+#include "../partials/shared/accessControlHelpers.ligo"
+
 // Shared Helpers
 #include "../partials/shared/sharedHelpers.ligo"
 
@@ -16,7 +19,7 @@
 #include "../partials/shared/transferHelpers.ligo"
 
 // Constants
-#include "../partials/shared/constants.ligo"
+// #include "../partials/shared/constants.ligo"
 
 // ------------------------------------------------------------------------------
 // Contract Types
@@ -107,7 +110,7 @@ function main (const action : action; const s : debtControllerStorageType) : ret
 
             // Admin Entrypoints
         |   AddManager(parameters)                -> addManager(parameters, s)
-        |   RemoveManager(_parameters)            -> removeManager(s)
+        |   RemoveManager(parameters)             -> removeManager(parameters,  s)
         |   AddAdmin(parameters)                  -> addAdmin(parameters, s)
         |   RemoveAdmin(parameters)               -> removeAdmin(parameters, s)
         |   UpdateMetadata(parameters)            -> updateMetadata(parameters, s)

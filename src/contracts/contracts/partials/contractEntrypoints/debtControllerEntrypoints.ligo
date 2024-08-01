@@ -43,7 +43,7 @@ block {
 
 
 (*  addAdmin entrypoint *)
-function setAdmin(const newAdminAddress : address; var s : debtControllerStorageType) : return is
+function addAdmin(const newAdminAddress : address; var s : debtControllerStorageType) : return is
 block {
 
     // get lambda bytes
@@ -152,14 +152,14 @@ block {
 
 
 (*  setFeeWallet entrypoint *)
-function setFeeWallet(const setFeeWalletParams : setFeeWalletActionType; var s : debtControllerStorageType) : return is
+function setFeeWallet(const feeWallet : address; var s : debtControllerStorageType) : return is
 block {
 
     // get lambda bytes
     const lambdaBytes : bytes = getLambdaBytes("lambdaSetFeeWallet", s.lambdaLedger);
 
     // init debt controller lambda action
-    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaSetFeeWallet(setFeeWalletParams);
+    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaSetFeeWallet(feeWallet);
 
     // init response
     const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  
@@ -194,14 +194,14 @@ block {
 
 
 (*  disburseLoan entrypoint *)
-function disburseLoan(const disburseLoanParams : disburseLoanActionType; var s : debtControllerStorageType) : return is
+function disburseLoan(const debtId : nat; var s : debtControllerStorageType) : return is
 block {
 
     // get lambda bytes
     const lambdaBytes : bytes = getLambdaBytes("lambdaDisburseLoan", s.lambdaLedger);
 
     // init debt controller lambda action
-    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaDisburseLoan(disburseLoanParams);
+    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaDisburseLoan(debtId);
 
     // init response
     const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  
@@ -211,14 +211,14 @@ block {
 
 
 (*  returnDeposit entrypoint *)
-function returnDeposit(const returnDepositParams : returnDepositActionType; var s : debtControllerStorageType) : return is
+function returnDeposit(const debtId : nat; var s : debtControllerStorageType) : return is
 block {
 
     // get lambda bytes
     const lambdaBytes : bytes = getLambdaBytes("lambdaReturnDeposit", s.lambdaLedger);
 
     // init debt controller lambda action
-    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaReturnDeposit(returnDepositParams);
+    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaReturnDeposit(debtId);
 
     // init response
     const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  
@@ -262,14 +262,14 @@ block {
 
 
 (*  payOffDebt entrypoint *)
-function payOffDebt(const payOffDebtParams : payOffDebtActionType; var s : debtControllerStorageType) : return is
+function payOffDebt(const debtId : nat; var s : debtControllerStorageType) : return is
 block {
 
     // get lambda bytes
     const lambdaBytes : bytes = getLambdaBytes("lambdaPayOffDebt", s.lambdaLedger);
 
     // init debt controller lambda action
-    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaPayOffDebt(payOffDebtParams);
+    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaPayOffDebt(debtId);
 
     // init response
     const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  
@@ -290,7 +290,7 @@ block {
 function setLambda(const setLambdaParams : setLambdaType; var s : debtControllerStorageType) : return is
 block{
     
-    verifySenderIsSuperAdmin(s.superAdmin); // check that sender is super admin 
+    onlyAdmin(s.admins);
     
     // assign params to constants for better code readability
     const lambdaName    = setLambdaParams.name;

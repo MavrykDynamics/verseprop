@@ -19,9 +19,9 @@ type debtRecordType is [@layout:comb] record [
     walletAddress        : address;
     minInvestmentAmount  : nat;
     totalInvestment      : nat;
-    debtStatus           : debtStatusType;
-    startDate            : timestamp;
-    settledDate          : timestamp;
+    status               : debtStatusType;
+    startDate            : nat;
+    settledDate          : nat;
     nftContractAddress   : address;
     tokenURI             : string;
     currency             : currencyType;
@@ -38,7 +38,7 @@ type investmentLedgerType is big_map(nat, tokenToInvestmentMapType) // Mapping o
 
 type addDebtActionType is debtRecordType
 
-type updateDebtActionType is (nat, debtRecordType)
+type updateDebtActionType is (nat * debtRecordType)
 
 type setInvestmentActionType is [@layout:comb] record [
     debtId   : nat;
@@ -76,9 +76,10 @@ type debtControllerLambdaActionType is
 
         // Admin Lambdas
         LambdaAddManager                  of (address)
-    |   LambdaRemoveManager               of (unit)
+    |   LambdaRemoveManager               of (address)
     |   LambdaAddAdmin                    of (address)
     |   LambdaRemoveAdmin                 of (address)
+    |   LambdaUpdateMetadata              of updateMetadataType
 
         // Admin Debt Controller Lambdas
     |   LambdaAddDebt                     of addDebtActionType
@@ -89,7 +90,7 @@ type debtControllerLambdaActionType is
         // Debt Controller Lambdas
     |   LambdaCreateDebt                  of createDebtActionType
     |   LambdaDisburseLoan                of (nat)
-    |   LambdaRemoveDeposit               of (nat)
+    |   LambdaReturnDeposit               of (nat)
     |   LambdaAddDeposit                  of addDepositActionType
     |   LambdaWithdrawDeposit             of withdrawDepositActionType
     |   LambdaPayOffDebt                  of (nat)

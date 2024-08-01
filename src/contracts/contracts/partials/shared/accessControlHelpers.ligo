@@ -25,11 +25,11 @@ block {
 
 
 // verify sender is admin or manager
-function onlyAdminOrManager(const managers : set(address)) : unit is
+function onlyAdminOrManager(const admins : set(address); const managers : set(address)) : unit is
 block {
 
     const senderIsAdmin : bool = admins contains Tezos.get_sender();
-        const senderIsManager : bool = managers contains Tezos.get_sender();
+    const senderIsManager : bool = managers contains Tezos.get_sender();
 
     if senderIsAdmin or senderIsManager then skip else failwith(error_ONLY_ADMIN_OR_MANAGER_ALLOWED);
 

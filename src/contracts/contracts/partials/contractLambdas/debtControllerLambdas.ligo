@@ -95,6 +95,27 @@ block {
 
 } with (noOperations, s)
 
+
+
+(*  updateMetadata lambda - update the metadata at a given key *)
+function lambdaUpdateMetadata(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
+block {
+
+    case debtControllerLambdaAction of [
+        |   LambdaUpdateMetadata(updateMetadataParams) -> {
+
+                onlyAdmin(s.admins);
+                
+                const metadataKey   : string = updateMetadataParams.metadataKey;
+                const metadataHash  : bytes  = updateMetadataParams.metadataHash;
+                
+                s.metadata[metadataKey] := metadataHash;
+            }
+        |   _ -> skip
+    ];
+
+} with (noOperations, s)
+
 // ------------------------------------------------------------------------------
 // Admin Lambdas End
 // ------------------------------------------------------------------------------
@@ -112,10 +133,10 @@ block {
 function lambdaAddDebt(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
 block {
 
-    onlyManager(s.managers);
-
     case debtControllerLambdaAction of [
         |   LambdaAddDebt(addDebtParams) -> {
+
+                onlyManager(s.managers);
 
                 const currentDebtCounter : nat = s.debtCounter;
 
@@ -126,13 +147,13 @@ block {
                     walletAddress        = addDebtParams.walletAddress;
                     minInvestmentAmount  = addDebtParams.minInvestmentAmount;
                     totalInvestment      = addDebtParams.totalInvestment;
-                    debtStatus           = addDebtParams.debtStatus;
+                    status               = addDebtParams.status;
                     startDate            = addDebtParams.startDate;
                     settledDate          = addDebtParams.settledDate;
                     nftContractAddress   = addDebtParams.nftContractAddress;
                     tokenURI             = addDebtParams.tokenURI;
                     currency             = addDebtParams.currency;
-                ]
+                ];
 
                 s.debtLedger[currentDebtCounter] := debt;
 
@@ -155,10 +176,10 @@ block {
 function lambdaUpdateDebt(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
 block {
 
-    onlyManager(s.managers);
-
     case debtControllerLambdaAction of [
         |   LambdaUpdateDebt(updateDebtParams) -> {
+
+                onlyManager(s.managers);
 
                 const debtId : nat                 = updateDebtParams.0;
                 const updatedDebt : debtRecordType = updateDebtParams.1;
@@ -189,10 +210,10 @@ block {
 function lambdaSetInvestment(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
 block {
 
-    onlyManager(s.managers);
-
     case debtControllerLambdaAction of [
         |   LambdaSetInvestment(setInvestmentParams) -> {
+
+                onlyManager(s.managers);
 
                 const debtId : nat  = setInvestmentParams.debtId;
                 const tokenId : nat = setInvestmentParams.tokenId;
@@ -215,10 +236,10 @@ block {
 function lambdaSetFeeWallet(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
 block {
 
-    onlyAdmin(s.admins);
-
     case debtControllerLambdaAction of [
         |   LambdaSetFeeWallet(_feeWallet) -> {
+    
+                onlyAdmin(s.admins);
 
                 s.feeWallet := _feeWallet;
 
@@ -249,10 +270,10 @@ block {
 function lambdaCreateDebt(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
 block {
 
-    onlyAdmin(s.admins); // change from original where it is onlyOwner
-
     case debtControllerLambdaAction of [
         |   LambdaCreateDebt(createDebtParams) -> {
+
+                onlyAdmin(s.admins); // change from original where it is onlyOwner
 
                 // todo: originate nft contract address
                 const nftContract : address = Tezos.get_sender(); // temp
@@ -266,13 +287,13 @@ block {
                     walletAddress        = createDebtParams._walletAddress;
                     minInvestmentAmount  = createDebtParams._minInvestmentAmount;
                     totalInvestment      = 0n;
-                    debtStatus           = OPEN;
+                    status               = OPEN;
                     startDate            = 0n;
                     settledDate          = 0n;
                     nftContractAddress   = nftContract;
                     tokenURI             = createDebtParams._tokenURI;
                     currency             = createDebtParams._currency;
-                ]
+                ];
 
                 s.debtLedger[currentDebtCounter] := debt;
 
@@ -301,7 +322,7 @@ block {
 
                 onlyAdmin(s.admins); // change from original where it is onlyOwner
 
-                var debt : debtRecordType := case s.debtLedger[debtId] of [
+                var debt : debtRecordType := case s.debtLedger[_debtId] of [
                         Some(_record) -> _record
                     |   None -> failwith("Debt with the provided id does not exist")
                 ];
@@ -327,12 +348,12 @@ block {
                     const loanAmount : nat = abs(debt.totalInvestment - versepropFee);
                     operations := transferFa2Token(Tezos.get_self_address(), debt.walletAddress, loanAmount, 0n, s.usdcTokenAddress) # operations;
 
-                }
+                };
 
                 // Update status and startDate (to be used for interest calculation)
-                debt.startDate          = Tezos.get_now();
-                debt.status             = FUNDED:
-                s.debtLedger[debtId]   := debt;
+                debt.startDate         := Tezos.get_level();
+                debt.status            := FUNDED;
+                s.debtLedger[_debtId]  := debt;
                 
             }
         |   _ -> skip
@@ -375,7 +396,7 @@ block {
 
                         const investmentAmount : nat = case s.investmentLedger[_debtId] of [
                                 Some(_map) -> {
-                                    const _investmentAmount : nat = case _map[i] of [
+                                    const _investmentAmount : nat = case _map[abs(i)] of [
                                             Some(_amt) -> _amt
                                         |   None       -> 0n
                                     ]; 
@@ -385,14 +406,14 @@ block {
 
                         if investmentAmount > 0n then {
 
-                            const owner : address = ownerOf(tokenId, nftContract); 
+                            const owner : address = ownerOf(abs(i), nftContract); 
                             
                             // Refund logic
                             if debt.currency = MAV then {
                                 operations := transferTez((Tezos.get_contract_with_error(owner, "Error. Tez could not be sent to wallet address.") : contract(unit)), investmentAmount * 1mutez) # operations;
                             } else if debt.currency = USDC then {
                                 operations := transferFa2Token(Tezos.get_self_address(), owner, investmentAmount, 0n, s.usdcTokenAddress) # operations;
-                                operations := _burnDebtNFTOperation(_tokenId, nftContract) # operations; // Burn the NFT
+                                operations := _burnDebtNFTOperation(abs(i), nftContract) # operations; // Burn the NFT
                             };
                         }
 
@@ -401,7 +422,7 @@ block {
                 };
 
                 // Update debt status
-                debt.status      = UNFUNDED;
+                debt.status           := UNFUNDED;
                 s.debtLedger[_debtId] := debt;
 
             }
@@ -441,7 +462,7 @@ block {
 
                 if debt.currency = MAV then {
 
-                    if abs(Tezos.get_amount()) = _amt then skip else failwith("Incorrect MAV amount");
+                    if (Tezos.get_amount() / 1mutez) = _amt then skip else failwith("Incorrect MAV amount");
                     if _amt >= debt.minInvestmentAmount then skip else failwith("Minimum investment amount not sufficient");
 
                     operations := transferTez((Tezos.get_contract_with_error(Tezos.get_self_address(), "Error. Tez could not be sent to address.") : contract(unit)), Tezos.get_amount()) # operations;
@@ -449,14 +470,14 @@ block {
                 } else if debt.currency = USDC then {
 
                     if _amt >= debt.minInvestmentAmount then skip else failwith("Minimum investment amount not sufficient");
-                    operations := transferFa2Token(Tezos.get_self_address(), owner, _amt, 0n, s.usdcTokenAddress) # operations;
+                    operations := transferFa2Token(Tezos.get_self_address(), Tezos.get_sender(), _amt, 0n, s.usdcTokenAddress) # operations;
 
                 };
 
                 // Mint NFT which is associated with the investment amount
                 const nftContract : address = debt.nftContractAddress;
-                const tokenId : nat = getNextTokenId(nftContract);
-                operations := _mintDebtNFTOperation(Tezos.get_sender(), tokenId, 1n, nftContract);
+                const tokenId : nat = abs(getNextTokenId(nftContract));
+                operations := _mintDebtNFTOperation(Tezos.get_sender(), tokenId, 1n, nftContract) # operations;
                 s := _setInvestment(_debtId, tokenId, _amt, s);
 
                 // Update total investment amount on the debt
@@ -478,6 +499,8 @@ block {
 *)
 function lambdaWithdrawDeposit(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
 block {
+
+    var operations : list(operation) := nil;
 
     case debtControllerLambdaAction of [
         |   LambdaWithdrawDeposit(withdrawDepositParams) -> {
@@ -510,13 +533,13 @@ block {
                 if investmentAmount > 0n then skip else failwith("No deposit found");
 
                 // Calculate interest for the amount associated with the NFT
-                const interest : nat = calculateInterest([_debtId, investmentAmount], s);
+                const interest : nat = calculateInterest((_debtId, investmentAmount), s);
                 const totalWithdrawal : nat = investmentAmount + interest;
 
                 operations := _burnDebtNFTOperation(_tokenId, nftContract) # operations;
 
                 if debt.currency = MAV then {
-                    if abs(Tezos.get_balance()) >= totalWithdrawal then skip else failwith("Insufficient contract balance");
+                    if (Tezos.get_balance() / 1mutez) >= totalWithdrawal then skip else failwith("Insufficient contract balance");
                     operations := transferTez((Tezos.get_contract_with_error(Tezos.get_sender(), "Error. Tez could not be sent to address.") : contract(unit)), totalWithdrawal * 1mutez) # operations;
                 } else if debt.currency = USDC then {
                     const balanceOfContract : nat = getBalanceOf(Tezos.get_self_address(), s.usdcTokenAddress);
@@ -531,7 +554,7 @@ block {
         |   _ -> skip
     ];
 
-} with (noOperations, s)
+} with (operations, s)
 
 
 
@@ -556,25 +579,25 @@ block {
 
                 if debt.status = FUNDED then skip else failwith("Loan not funded");
 
-                const interest : nat = calculateInterest([_debtId, debt.maxAmount], s);
+                const interest : nat = calculateInterest((_debtId, debt.maxAmount), s);
                 const totalPayment : nat = debt.maxAmount + interest;
 
                 if debt.currency = MAV then {
-                    if abs(Tezos.get_amount()) >= totalPayment then skip else failwith("Insufficient payment");
+                    if (Tezos.get_amount() / 1mutez) >= totalPayment then skip else failwith("Insufficient payment");
                     operations := transferTez((Tezos.get_contract_with_error(Tezos.get_self_address(), "Error. Tez could not be sent to address.") : contract(unit)), Tezos.get_amount()) # operations;
                 } else if debt.currency = USDC then {
                     operations := transferFa2Token(Tezos.get_sender(), Tezos.get_self_address(), totalPayment, 0n, s.usdcTokenAddress) # operations;
                 };
 
-                debt.status            = SETTLED;
-                debt.settledDate       = Tezos.get_level();
+                debt.status           := SETTLED;
+                debt.settledDate      := Tezos.get_level();
                 s.debtLedger[_debtId] := debt;
 
             }
         |   _ -> skip
     ];
 
-} with (noOperations, s)
+} with (operations, s)
 
 // ------------------------------------------------------------------------------
 // Debt Controller Lambdas End

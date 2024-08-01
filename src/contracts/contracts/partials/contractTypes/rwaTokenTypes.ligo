@@ -69,7 +69,7 @@ type ledgerKeyType is [@layout:comb] record [
 
 type tokenMetadataType is [@layout:comb] record [
     token_id          : tokenIdType;
-    token_info        : map(string, bytes);
+    token_info        : map(string, bytes); 
 ]
 
 type ruleType is [@layout:comb] record [
