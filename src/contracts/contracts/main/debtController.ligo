@@ -47,11 +47,16 @@ type action is
 
     |   Default                     of unit
 
+        // SuperAdmin Entrypoints
+    |   SetSuperAdmin               of (address)
+    |   ClaimSuperAdmin             of (unit)
+
         // Admin Entrypoints
     |   AddManager                  of (address)
     |   RemoveManager               of (address)
     |   AddAdmin                    of (address)
     |   RemoveAdmin                 of (address)
+    |   SetKycAddress               of (address)
     |   UpdateMetadata              of updateMetadataType
 
         // Admin Debt Controller Entrypoints
@@ -118,11 +123,16 @@ function main (const action : action; const s : debtControllerStorageType) : ret
 
         |   Default(_params)                      -> ((nil : list(operation)), s)
 
+            // SuperAdmin Entrypoints
+        |   SetSuperAdmin(parameters)             -> setSuperAdmin(parameters, s)
+        |   ClaimSuperAdmin(_parameters)          -> claimSuperAdmin(s)
+
             // Admin Entrypoints
         |   AddManager(parameters)                -> addManager(parameters, s)
         |   RemoveManager(parameters)             -> removeManager(parameters,  s)
         |   AddAdmin(parameters)                  -> addAdmin(parameters, s)
         |   RemoveAdmin(parameters)               -> removeAdmin(parameters, s)
+        |   SetKycAddress(parameters)             -> setKycAddress(parameters, s)
         |   UpdateMetadata(parameters)            -> updateMetadata(parameters, s)
 
             // Debt Controller Admin Entrypoints

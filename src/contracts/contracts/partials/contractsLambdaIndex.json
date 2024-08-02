@@ -1,11 +1,15 @@
 {
     "debtController": [
-        
+
+        "lambdaSetSuperAdmin",
+        "lambdaClaimSuperAdmin",
+
         "lambdaAddManager",
         "lambdaRemoveManager",
         "lambdaAddAdmin",
         "lambdaRemoveAdmin",
-
+        "lambdaSetKycAddress",
+        
         "lambdaUpdateMetadata",
         "lambdaUpdateDebt",
         "lambdaSetInvestment",
@@ -19,7 +23,7 @@
         "lambdaPayOffDebt"
         
     ],
-    
+
     "kyc": [
         "lambdaSetSuperAdmin",
         "lambdaClaimSuperAdmin",

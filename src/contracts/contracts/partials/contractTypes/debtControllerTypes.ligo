@@ -80,11 +80,16 @@ type payOffDebtActionType is [@layout:comb] record [
 
 type debtControllerLambdaActionType is 
 
+        // SuperAdmin Lambdas
+        LambdaSetSuperAdmin               of (address)
+    |   LambdaClaimSuperAdmin             of (unit)
+
         // Admin Lambdas
-        LambdaAddManager                  of (address)
+    |   LambdaAddManager                  of (address)
     |   LambdaRemoveManager               of (address)
     |   LambdaAddAdmin                    of (address)
     |   LambdaRemoveAdmin                 of (address)
+    |   LambdaSetKycAddress               of (address)
     |   LambdaUpdateMetadata              of updateMetadataType
 
         // Admin Debt Controller Lambdas

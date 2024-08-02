@@ -5,6 +5,67 @@
 // ------------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------------
+// SuperAdmin Lambdas Begin
+// ------------------------------------------------------------------------------
+
+(**
+* @dev Public function to set the superAdmin to a specified address. Can only be called by an admin.
+* @param newSuperAdminAddress Address to be set as the new superAdmin
+*)
+function lambdaSetSuperAdmin(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
+block {
+    
+    case debtControllerLambdaAction of [
+        |   LambdaSetSuperAdmin(newSuperAdminAddress) -> {
+
+                onlyAdmin(s.admins);
+
+                s.newSuperAdmin := Some(newSuperAdminAddress);
+
+            }
+        |   _ -> skip
+    ];
+
+} with (noOperations, s)
+
+
+
+(**
+* @dev Public function to for new superAdmin contract to claim as the new superAdmin address. Can only be called by the specified new superAdmin
+*)
+function lambdaClaimSuperAdmin(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
+block {
+    
+    case debtControllerLambdaAction of [
+        |   LambdaClaimSuperAdmin(_params) -> {
+
+                // get sender and new superAdmin address 
+                const sender : address = Tezos.get_sender();
+                const newSuperAdmin : address = case s.newSuperAdmin of [
+                        Some(_address) -> _address
+                    |   None           -> failwith(error_NO_NEW_SUPER_ADMIN_FOUND)
+                ];
+
+                // check if sender is not new super admin 
+                if sender =/= newSuperAdmin then failwith(error_SENDER_IS_NOT_NEW_SUPER_ADMIN) else skip;
+
+                // update superAdmin
+                s.superAdmin     := newSuperAdmin;
+                s.newSuperAdmin  := None;
+
+            }
+        |   _ -> skip
+    ];
+
+} with (noOperations, s)
+
+// ------------------------------------------------------------------------------
+// SuperAdmin Lambdas End
+// ------------------------------------------------------------------------------
+
+
+
+// ------------------------------------------------------------------------------
 // Admin Lambdas Begin
 // ------------------------------------------------------------------------------
 
@@ -88,6 +149,28 @@ block {
                 onlyAdmin(s.admins);
 
                 s.admins := Set.remove(adminToRemove, s.admins);
+
+            }
+        |   _ -> skip
+    ];
+
+} with (noOperations, s)
+
+
+
+(**
+* @dev Public function to set the KYC Contract Address to a specified address. Can only be called by an existing admin.
+* @param newKycAddress Address to be the new KYC Contract Address
+*)
+function lambdaSetKycAddress(const debtControllerLambdaAction : debtControllerLambdaActionType; var s : debtControllerStorageType) : return is
+block {
+
+    case debtControllerLambdaAction of [
+        |   LambdaSetKycAddress(newKycAddress) -> {
+
+                onlyAdmin(s.admins);
+
+                s.kycAddress := newKycAddress;
 
             }
         |   _ -> skip

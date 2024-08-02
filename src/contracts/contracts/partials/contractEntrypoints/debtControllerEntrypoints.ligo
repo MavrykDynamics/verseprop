@@ -5,6 +5,48 @@
 // ------------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------------
+// Super Admin Entrypoints Begin
+// ------------------------------------------------------------------------------
+
+(*  setSuperAdmin entrypoint *)
+function setSuperAdmin(const newAdminAddress : address; var s : debtControllerStorageType) : return is
+block {
+
+    // get lambda bytes
+    const lambdaBytes : bytes = getLambdaBytes("lambdaSetSuperAdmin", s.lambdaLedger);
+
+    // init debtController lambda action
+    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaSetSuperAdmin(newAdminAddress);
+
+    // init response
+    const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  
+    
+} with response
+
+
+
+// (*  claimSuperAdmin entrypoint *)
+function claimSuperAdmin(var s : debtControllerStorageType) : return is
+block {
+
+    // get lambda bytes
+    const lambdaBytes : bytes = getLambdaBytes("lambdaClaimSuperAdmin", s.lambdaLedger);
+
+    // init debtController lambda action
+    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaClaimSuperAdmin(unit);
+
+    // init response
+    const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  
+    
+} with response
+
+// ------------------------------------------------------------------------------
+// Super Admin Entrypoints End
+// ------------------------------------------------------------------------------
+
+
+
+// ------------------------------------------------------------------------------
 // Admin Entrypoints Begin
 // ------------------------------------------------------------------------------
 
@@ -67,6 +109,23 @@ block {
 
     // init debt controller lambda action
     const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaRemoveAdmin(adminToRemove);
+
+    // init response
+    const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  
+    
+} with response
+
+
+
+(*  setKycAddress entrypoint *)
+function setKycAddress(const newKycAddress : address; var s : debtControllerStorageType) : return is
+block {
+
+    // get lambda bytes
+    const lambdaBytes : bytes = getLambdaBytes("lambdaSetKycAddress", s.lambdaLedger);
+
+    // init debt controller lambda action
+    const debtControllerLambdaAction : debtControllerLambdaActionType = LambdaSetKycAddress(newKycAddress);
 
     // init response
     const response : return = unpackLambda(lambdaBytes, debtControllerLambdaAction, s);  
