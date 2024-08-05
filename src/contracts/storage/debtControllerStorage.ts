@@ -22,7 +22,7 @@ const metadata = MichelsonMap.fromLiteral({
 
 export const debtControllerStorage : debtControllerStorageType = {
     
-    admins                    : [eve.pkh],
+    admins                    : [bob.pkh],
     managers                  : [eve.pkh],
 
     superAdmin                : eve.pkh,
