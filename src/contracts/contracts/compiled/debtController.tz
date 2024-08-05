@@ -12,25 +12,26 @@
                            (nat %settledDate)
                            (address %nftContractAddress)
                            (bytes %tokenURI)
-                           (or %currency (unit %mAV) (unit %uSDC))))
+                           (string %currency)))
                     (or (pair %addDeposit (nat %_debtId) (nat %_amt) (address %_user))
                         (address %addManager)))
-                (or (or (pair %createDebt
+                (or (or (unit %claimSuperAdmin)
+                        (pair %createDebt
                            (nat %_amt)
                            (nat %_interestRate)
                            (nat %_term)
                            (address %_walletAddress)
                            (nat %_minInvestmentAmount)
                            (bytes %_tokenURI)
-                           (or %_currency (unit %mAV) (unit %uSDC)))
-                        (unit %default))
-                    (or (nat %disburseLoan) (pair %payOffDebt (nat %_debtId) (address %_user)))))
-            (or (or (or (address %removeAdmin) (address %removeManager))
-                    (or (nat %returnDeposit) (address %setFeeWallet)))
-                (or (or (pair %setInvestment (nat %debtId) (nat %tokenId) (nat %amount))
-                        (address %setKycAddress))
-                    (or (pair %setLambda (string %name) (bytes %func_bytes)) (address %setSuperAdmin)))))
-        (or (or (pair %updateDebt
+                           (string %_currency)))
+                    (or (unit %default) (nat %disburseLoan))))
+            (or (or (or (pair %payOffDebt (nat %_debtId) (address %_user)) (address %removeAdmin))
+                    (or (address %removeManager) (nat %returnDeposit)))
+                (or (or (address %setFeeWallet)
+                        (pair %setInvestment (nat %debtId) (nat %tokenId) (nat %amount)))
+                    (or (address %setKycAddress) (pair %setLambda (string %name) (bytes %func_bytes))))))
+        (or (or (address %setSuperAdmin)
+                (pair %updateDebt
                    nat
                    (nat %maxAmount)
                    (nat %interestRate)
@@ -43,9 +44,9 @@
                    (nat %settledDate)
                    (address %nftContractAddress)
                    (bytes %tokenURI)
-                   (or %currency (unit %mAV) (unit %uSDC)))
-                (pair %updateMetadata (string %metadataKey) (bytes %metadataHash)))
-            (pair %withdrawDeposit (nat %_debtId) (nat %_tokenId) (address %_user)))) ;
+                   (string %currency)))
+            (or (pair %updateMetadata (string %metadataKey) (bytes %metadataHash))
+                (pair %withdrawDeposit (nat %_debtId) (nat %_tokenId) (address %_user))))) ;
   storage
     (pair (set %admins address)
           (set %managers address)
@@ -55,7 +56,7 @@
           (address %feeWallet)
           (address %usdcTokenAddress)
           (big_map %metadata string bytes)
-          (nat %debtCounter)
+          (nat %debtCount)
           (big_map %debtLedger
              nat
              (pair (nat %maxAmount)
@@ -69,7 +70,7 @@
                    (nat %settledDate)
                    (address %nftContractAddress)
                    (bytes %tokenURI)
-                   (or %currency (unit %mAV) (unit %uSDC))))
+                   (string %currency)))
           (big_map %investmentLedger nat (map nat nat))
           (big_map %lambdaLedger string bytes)) ;
   code { LAMBDA
@@ -90,13 +91,13 @@
                                                  nat
                                                  address
                                                  bytes
-                                                 (or unit unit)))
+                                                 string))
                                        (or (pair nat nat address) address))
-                                   (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                       (or (pair nat address) address)))
-                               (or (or (or address nat) (or address (pair nat nat nat)))
-                                   (or (or address address)
-                                       (or (pair nat
+                                   (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address))))
+                               (or (or (or address address) (or nat address))
+                                   (or (or (pair nat nat nat) address)
+                                       (or address
+                                           (pair nat
                                                  nat
                                                  nat
                                                  nat
@@ -108,9 +109,8 @@
                                                  nat
                                                  address
                                                  bytes
-                                                 (or unit unit))
-                                           (pair string bytes)))))
-                           (pair nat nat address)))
+                                                 string)))))
+                           (or (pair string bytes) (pair nat nat address))))
                  (set address)
                  (set address)
                  address
@@ -133,7 +133,7 @@
                           nat
                           address
                           bytes
-                          (or unit unit)))
+                          string))
                  (big_map nat (map nat nat))
                  (big_map string bytes))
            (pair (list operation)
@@ -159,7 +159,7 @@
                           nat
                           address
                           bytes
-                          (or unit unit)))
+                          string))
                  (big_map nat (map nat nat))
                  (big_map string bytes))
            { UNPAIR ;
@@ -179,25 +179,26 @@
                                                (nat %settledDate)
                                                (address %nftContractAddress)
                                                (bytes %tokenURI)
-                                               (or %currency (unit %mAV) (unit %uSDC))))
+                                               (string %currency)))
                                         (or (pair %lambdaAddDeposit (nat %_debtId) (nat %_amt) (address %_user))
                                             (address %lambdaAddManager)))
-                                    (or (or (pair %lambdaCreateDebt
+                                    (or (or (unit %lambdaClaimSuperAdmin)
+                                            (pair %lambdaCreateDebt
                                                (nat %_amt)
                                                (nat %_interestRate)
                                                (nat %_term)
                                                (address %_walletAddress)
                                                (nat %_minInvestmentAmount)
                                                (bytes %_tokenURI)
-                                               (or %_currency (unit %mAV) (unit %uSDC)))
-                                            (nat %lambdaDisburseLoan))
-                                        (or (pair %lambdaPayOffDebt (nat %_debtId) (address %_user))
-                                            (address %lambdaRemoveAdmin))))
-                                (or (or (or (address %lambdaRemoveManager) (nat %lambdaReturnDeposit))
-                                        (or (address %lambdaSetFeeWallet)
-                                            (pair %lambdaSetInvestment (nat %debtId) (nat %tokenId) (nat %amount))))
-                                    (or (or (address %lambdaSetKycAddress) (address %lambdaSetSuperAdmin))
-                                        (or (pair %lambdaUpdateDebt
+                                               (string %_currency)))
+                                        (or (nat %lambdaDisburseLoan)
+                                            (pair %lambdaPayOffDebt (nat %_debtId) (address %_user)))))
+                                (or (or (or (address %lambdaRemoveAdmin) (address %lambdaRemoveManager))
+                                        (or (nat %lambdaReturnDeposit) (address %lambdaSetFeeWallet)))
+                                    (or (or (pair %lambdaSetInvestment (nat %debtId) (nat %tokenId) (nat %amount))
+                                            (address %lambdaSetKycAddress))
+                                        (or (address %lambdaSetSuperAdmin)
+                                            (pair %lambdaUpdateDebt
                                                nat
                                                (nat %maxAmount)
                                                (nat %interestRate)
@@ -210,9 +211,9 @@
                                                (nat %settledDate)
                                                (address %nftContractAddress)
                                                (bytes %tokenURI)
-                                               (or %currency (unit %mAV) (unit %uSDC)))
-                                            (pair %lambdaUpdateMetadata (string %metadataKey) (bytes %metadataHash))))))
-                            (pair %lambdaWithdrawDeposit (nat %_debtId) (nat %_tokenId) (address %_user)))
+                                               (string %currency))))))
+                            (or (pair %lambdaUpdateMetadata (string %metadataKey) (bytes %metadataHash))
+                                (pair %lambdaWithdrawDeposit (nat %_debtId) (nat %_tokenId) (address %_user))))
                         (set %admins address)
                         (set %managers address)
                         (address %superAdmin)
@@ -221,7 +222,7 @@
                         (address %feeWallet)
                         (address %usdcTokenAddress)
                         (big_map %metadata string bytes)
-                        (nat %debtCounter)
+                        (nat %debtCount)
                         (big_map %debtLedger
                            nat
                            (pair (nat %maxAmount)
@@ -235,7 +236,7 @@
                                  (nat %settledDate)
                                  (address %nftContractAddress)
                                  (bytes %tokenURI)
-                                 (or %currency (unit %mAV) (unit %uSDC))))
+                                 (string %currency)))
                         (big_map %investmentLedger nat (map nat nat))
                         (big_map %lambdaLedger string bytes))
                   (pair (list operation)
@@ -247,7 +248,7 @@
                         (address %feeWallet)
                         (address %usdcTokenAddress)
                         (big_map %metadata string bytes)
-                        (nat %debtCounter)
+                        (nat %debtCount)
                         (big_map %debtLedger
                            nat
                            (pair (nat %maxAmount)
@@ -261,7 +262,7 @@
                                  (nat %settledDate)
                                  (address %nftContractAddress)
                                  (bytes %tokenURI)
-                                 (or %currency (unit %mAV) (unit %uSDC))))
+                                 (string %currency)))
                         (big_map %investmentLedger nat (map nat nat))
                         (big_map %lambdaLedger string bytes))) ;
              IF_NONE { DROP 2 ; PUSH nat 3 ; FAILWITH } { DUG 2 ; PAIR ; EXEC } } ;
@@ -291,13 +292,13 @@
                                         nat
                                         address
                                         bytes
-                                        (or unit unit)) ;
+                                        string) ;
                              LEFT (or (pair nat nat address) address) ;
-                             LEFT (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                      (or (pair nat address) address)) ;
-                             LEFT (or (or (or address nat) (or address (pair nat nat nat)))
-                                      (or (or address address)
-                                          (or (pair nat
+                             LEFT (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address))) ;
+                             LEFT (or (or (or address address) (or nat address))
+                                      (or (or (pair nat nat nat) address)
+                                          (or address
+                                              (pair nat
                                                     nat
                                                     nat
                                                     nat
@@ -309,9 +310,8 @@
                                                     nat
                                                     address
                                                     bytes
-                                                    (or unit unit))
-                                              (pair string bytes)))) ;
-                             LEFT (pair nat nat address) ;
+                                                    string)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -328,11 +328,11 @@
                              SWAP ;
                              RIGHT address ;
                              LEFT (or (pair nat nat address) address) ;
-                             LEFT (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                      (or (pair nat address) address)) ;
-                             LEFT (or (or (or address nat) (or address (pair nat nat nat)))
-                                      (or (or address address)
-                                          (or (pair nat
+                             LEFT (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address))) ;
+                             LEFT (or (or (or address address) (or nat address))
+                                      (or (or (pair nat nat nat) address)
+                                          (or address
+                                              (pair nat
                                                     nat
                                                     nat
                                                     nat
@@ -344,9 +344,8 @@
                                                     nat
                                                     address
                                                     bytes
-                                                    (or unit unit))
-                                              (pair string bytes)))) ;
-                             LEFT (pair nat nat address) ;
+                                                    string)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -376,12 +375,12 @@
                                          nat
                                          address
                                          bytes
-                                         (or unit unit))) ;
-                             LEFT (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                      (or (pair nat address) address)) ;
-                             LEFT (or (or (or address nat) (or address (pair nat nat nat)))
-                                      (or (or address address)
-                                          (or (pair nat
+                                         string)) ;
+                             LEFT (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address))) ;
+                             LEFT (or (or (or address address) (or nat address))
+                                      (or (or (pair nat nat nat) address)
+                                          (or address
+                                              (pair nat
                                                     nat
                                                     nat
                                                     nat
@@ -393,9 +392,8 @@
                                                     nat
                                                     address
                                                     bytes
-                                                    (or unit unit))
-                                              (pair string bytes)))) ;
-                             LEFT (pair nat nat address) ;
+                                                    string)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -424,12 +422,12 @@
                                          nat
                                          address
                                          bytes
-                                         (or unit unit))) ;
-                             LEFT (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                      (or (pair nat address) address)) ;
-                             LEFT (or (or (or address nat) (or address (pair nat nat nat)))
-                                      (or (or address address)
-                                          (or (pair nat
+                                         string)) ;
+                             LEFT (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address))) ;
+                             LEFT (or (or (or address address) (or nat address))
+                                      (or (or (pair nat nat nat) address)
+                                          (or address
+                                              (pair nat
                                                     nat
                                                     nat
                                                     nat
@@ -441,9 +439,8 @@
                                                     nat
                                                     address
                                                     bytes
-                                                    (or unit unit))
-                                              (pair string bytes)))) ;
-                             LEFT (pair nat nat address) ;
+                                                    string)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -452,6 +449,55 @@
                              EXEC } } }
                    { IF_LEFT
                        { IF_LEFT
+                           { DROP ;
+                             DUP ;
+                             GET 22 ;
+                             PUSH string "lambdaClaimSuperAdmin" ;
+                             PAIR ;
+                             DIG 3 ;
+                             SWAP ;
+                             EXEC ;
+                             UNIT ;
+                             LEFT (pair nat nat nat address nat bytes string) ;
+                             LEFT (or nat (pair nat address)) ;
+                             RIGHT
+                               (or (or address
+                                       (pair nat
+                                             nat
+                                             nat
+                                             address
+                                             nat
+                                             nat
+                                             (or (or unit unit) (or unit unit))
+                                             nat
+                                             nat
+                                             address
+                                             bytes
+                                             string))
+                                   (or (pair nat nat address) address)) ;
+                             LEFT (or (or (or address address) (or nat address))
+                                      (or (or (pair nat nat nat) address)
+                                          (or address
+                                              (pair nat
+                                                    nat
+                                                    nat
+                                                    nat
+                                                    address
+                                                    nat
+                                                    nat
+                                                    (or (or unit unit) (or unit unit))
+                                                    nat
+                                                    nat
+                                                    address
+                                                    bytes
+                                                    string)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
                            { DUP 2 ;
                              GET 22 ;
                              PUSH string "lambdaCreateDebt" ;
@@ -460,8 +506,8 @@
                              SWAP ;
                              EXEC ;
                              SWAP ;
-                             LEFT nat ;
-                             LEFT (or (pair nat address) address) ;
+                             RIGHT unit ;
+                             LEFT (or nat (pair nat address)) ;
                              RIGHT
                                (or (or address
                                        (pair nat
@@ -475,11 +521,12 @@
                                              nat
                                              address
                                              bytes
-                                             (or unit unit)))
+                                             string))
                                    (or (pair nat nat address) address)) ;
-                             LEFT (or (or (or address nat) (or address (pair nat nat nat)))
-                                      (or (or address address)
-                                          (or (pair nat
+                             LEFT (or (or (or address address) (or nat address))
+                                      (or (or (pair nat nat nat) address)
+                                          (or address
+                                              (pair nat
                                                     nat
                                                     nat
                                                     nat
@@ -491,17 +538,16 @@
                                                     nat
                                                     address
                                                     bytes
-                                                    (or unit unit))
-                                              (pair string bytes)))) ;
-                             LEFT (pair nat nat address) ;
+                                                    string)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
                              PAIR ;
                              PAIR ;
-                             EXEC }
-                           { DIG 2 ; DIG 3 ; DROP 3 ; NIL operation ; PAIR } }
+                             EXEC } }
                        { IF_LEFT
+                           { DIG 2 ; DIG 3 ; DROP 3 ; NIL operation ; PAIR }
                            { DUP 2 ;
                              GET 22 ;
                              PUSH string "lambdaDisburseLoan" ;
@@ -510,8 +556,8 @@
                              SWAP ;
                              EXEC ;
                              SWAP ;
-                             RIGHT (pair nat nat nat address nat bytes (or unit unit)) ;
-                             LEFT (or (pair nat address) address) ;
+                             LEFT (pair nat address) ;
+                             RIGHT (or unit (pair nat nat nat address nat bytes string)) ;
                              RIGHT
                                (or (or address
                                        (pair nat
@@ -525,11 +571,12 @@
                                              nat
                                              address
                                              bytes
-                                             (or unit unit)))
+                                             string))
                                    (or (pair nat nat address) address)) ;
-                             LEFT (or (or (or address nat) (or address (pair nat nat nat)))
-                                      (or (or address address)
-                                          (or (pair nat
+                             LEFT (or (or (or address address) (or nat address))
+                                      (or (or (pair nat nat nat) address)
+                                          (or address
+                                              (pair nat
                                                     nat
                                                     nat
                                                     nat
@@ -541,57 +588,8 @@
                                                     nat
                                                     address
                                                     bytes
-                                                    (or unit unit))
-                                              (pair string bytes)))) ;
-                             LEFT (pair nat nat address) ;
-                             DIG 2 ;
-                             SWAP ;
-                             DIG 2 ;
-                             PAIR ;
-                             PAIR ;
-                             EXEC }
-                           { DUP 2 ;
-                             GET 22 ;
-                             PUSH string "lambdaPayOffDebt" ;
-                             PAIR ;
-                             DIG 4 ;
-                             SWAP ;
-                             EXEC ;
-                             SWAP ;
-                             LEFT address ;
-                             RIGHT (or (pair nat nat nat address nat bytes (or unit unit)) nat) ;
-                             RIGHT
-                               (or (or address
-                                       (pair nat
-                                             nat
-                                             nat
-                                             address
-                                             nat
-                                             nat
-                                             (or (or unit unit) (or unit unit))
-                                             nat
-                                             nat
-                                             address
-                                             bytes
-                                             (or unit unit)))
-                                   (or (pair nat nat address) address)) ;
-                             LEFT (or (or (or address nat) (or address (pair nat nat nat)))
-                                      (or (or address address)
-                                          (or (pair nat
-                                                    nat
-                                                    nat
-                                                    nat
-                                                    address
-                                                    nat
-                                                    nat
-                                                    (or (or unit unit) (or unit unit))
-                                                    nat
-                                                    nat
-                                                    address
-                                                    bytes
-                                                    (or unit unit))
-                                              (pair string bytes)))) ;
-                             LEFT (pair nat nat address) ;
+                                                    string)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -603,14 +601,14 @@
                        { IF_LEFT
                            { DUP 2 ;
                              GET 22 ;
-                             PUSH string "lambdaRemoveAdmin" ;
+                             PUSH string "lambdaPayOffDebt" ;
                              PAIR ;
                              DIG 4 ;
                              SWAP ;
                              EXEC ;
                              SWAP ;
-                             RIGHT (pair nat address) ;
-                             RIGHT (or (pair nat nat nat address nat bytes (or unit unit)) nat) ;
+                             RIGHT nat ;
+                             RIGHT (or unit (pair nat nat nat address nat bytes string)) ;
                              RIGHT
                                (or (or address
                                        (pair nat
@@ -624,11 +622,12 @@
                                              nat
                                              address
                                              bytes
-                                             (or unit unit)))
+                                             string))
                                    (or (pair nat nat address) address)) ;
-                             LEFT (or (or (or address nat) (or address (pair nat nat nat)))
-                                      (or (or address address)
-                                          (or (pair nat
+                             LEFT (or (or (or address address) (or nat address))
+                                      (or (or (pair nat nat nat) address)
+                                          (or address
+                                              (pair nat
                                                     nat
                                                     nat
                                                     nat
@@ -640,9 +639,8 @@
                                                     nat
                                                     address
                                                     bytes
-                                                    (or unit unit))
-                                              (pair string bytes)))) ;
-                             LEFT (pair nat nat address) ;
+                                                    string)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -651,16 +649,17 @@
                              EXEC }
                            { DUP 2 ;
                              GET 22 ;
-                             PUSH string "lambdaRemoveManager" ;
+                             PUSH string "lambdaRemoveAdmin" ;
                              PAIR ;
                              DIG 4 ;
                              SWAP ;
                              EXEC ;
                              SWAP ;
-                             LEFT nat ;
-                             LEFT (or address (pair nat nat nat)) ;
-                             LEFT (or (or address address)
-                                      (or (pair nat
+                             LEFT address ;
+                             LEFT (or nat address) ;
+                             LEFT (or (or (pair nat nat nat) address)
+                                      (or address
+                                          (pair nat
                                                 nat
                                                 nat
                                                 nat
@@ -672,8 +671,7 @@
                                                 nat
                                                 address
                                                 bytes
-                                                (or unit unit))
-                                          (pair string bytes))) ;
+                                                string))) ;
                              RIGHT
                                (or (or (or address
                                            (pair nat
@@ -687,11 +685,10 @@
                                                  nat
                                                  address
                                                  bytes
-                                                 (or unit unit)))
+                                                 string))
                                        (or (pair nat nat address) address))
-                                   (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                       (or (pair nat address) address))) ;
-                             LEFT (pair nat nat address) ;
+                                   (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -701,16 +698,17 @@
                        { IF_LEFT
                            { DUP 2 ;
                              GET 22 ;
-                             PUSH string "lambdaReturnDeposit" ;
+                             PUSH string "lambdaRemoveManager" ;
                              PAIR ;
                              DIG 4 ;
                              SWAP ;
                              EXEC ;
                              SWAP ;
                              RIGHT address ;
-                             LEFT (or address (pair nat nat nat)) ;
-                             LEFT (or (or address address)
-                                      (or (pair nat
+                             LEFT (or nat address) ;
+                             LEFT (or (or (pair nat nat nat) address)
+                                      (or address
+                                          (pair nat
                                                 nat
                                                 nat
                                                 nat
@@ -722,8 +720,7 @@
                                                 nat
                                                 address
                                                 bytes
-                                                (or unit unit))
-                                          (pair string bytes))) ;
+                                                string))) ;
                              RIGHT
                                (or (or (or address
                                            (pair nat
@@ -737,11 +734,10 @@
                                                  nat
                                                  address
                                                  bytes
-                                                 (or unit unit)))
+                                                 string))
                                        (or (pair nat nat address) address))
-                                   (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                       (or (pair nat address) address))) ;
-                             LEFT (pair nat nat address) ;
+                                   (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -750,16 +746,17 @@
                              EXEC }
                            { DUP 2 ;
                              GET 22 ;
-                             PUSH string "lambdaSetFeeWallet" ;
+                             PUSH string "lambdaReturnDeposit" ;
                              PAIR ;
                              DIG 4 ;
                              SWAP ;
                              EXEC ;
                              SWAP ;
-                             LEFT (pair nat nat nat) ;
-                             RIGHT (or address nat) ;
-                             LEFT (or (or address address)
-                                      (or (pair nat
+                             LEFT address ;
+                             RIGHT (or address address) ;
+                             LEFT (or (or (pair nat nat nat) address)
+                                      (or address
+                                          (pair nat
                                                 nat
                                                 nat
                                                 nat
@@ -771,8 +768,7 @@
                                                 nat
                                                 address
                                                 bytes
-                                                (or unit unit))
-                                          (pair string bytes))) ;
+                                                string))) ;
                              RIGHT
                                (or (or (or address
                                            (pair nat
@@ -786,11 +782,10 @@
                                                  nat
                                                  address
                                                  bytes
-                                                 (or unit unit)))
+                                                 string))
                                        (or (pair nat nat address) address))
-                                   (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                       (or (pair nat address) address))) ;
-                             LEFT (pair nat nat address) ;
+                                   (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -801,16 +796,17 @@
                        { IF_LEFT
                            { DUP 2 ;
                              GET 22 ;
-                             PUSH string "lambdaSetInvestment" ;
+                             PUSH string "lambdaSetFeeWallet" ;
                              PAIR ;
                              DIG 4 ;
                              SWAP ;
                              EXEC ;
                              SWAP ;
-                             RIGHT address ;
-                             RIGHT (or address nat) ;
-                             LEFT (or (or address address)
-                                      (or (pair nat
+                             RIGHT nat ;
+                             RIGHT (or address address) ;
+                             LEFT (or (or (pair nat nat nat) address)
+                                      (or address
+                                          (pair nat
                                                 nat
                                                 nat
                                                 nat
@@ -822,8 +818,7 @@
                                                 nat
                                                 address
                                                 bytes
-                                                (or unit unit))
-                                          (pair string bytes))) ;
+                                                string))) ;
                              RIGHT
                                (or (or (or address
                                            (pair nat
@@ -837,11 +832,10 @@
                                                  nat
                                                  address
                                                  bytes
-                                                 (or unit unit)))
+                                                 string))
                                        (or (pair nat nat address) address))
-                                   (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                       (or (pair nat address) address))) ;
-                             LEFT (pair nat nat address) ;
+                                   (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -850,14 +844,15 @@
                              EXEC }
                            { DUP 2 ;
                              GET 22 ;
-                             PUSH string "lambdaSetKycAddress" ;
+                             PUSH string "lambdaSetInvestment" ;
                              PAIR ;
                              DIG 4 ;
                              SWAP ;
                              EXEC ;
                              SWAP ;
                              LEFT address ;
-                             LEFT (or (pair nat
+                             LEFT (or address
+                                      (pair nat
                                             nat
                                             nat
                                             nat
@@ -869,9 +864,8 @@
                                             nat
                                             address
                                             bytes
-                                            (or unit unit))
-                                      (pair string bytes)) ;
-                             RIGHT (or (or address nat) (or address (pair nat nat nat))) ;
+                                            string)) ;
+                             RIGHT (or (or address address) (or nat address)) ;
                              RIGHT
                                (or (or (or address
                                            (pair nat
@@ -885,11 +879,10 @@
                                                  nat
                                                  address
                                                  bytes
-                                                 (or unit unit)))
+                                                 string))
                                        (or (pair nat nat address) address))
-                                   (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                       (or (pair nat address) address))) ;
-                             LEFT (pair nat nat address) ;
+                                   (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
                              DIG 2 ;
                              SWAP ;
                              DIG 2 ;
@@ -897,6 +890,53 @@
                              PAIR ;
                              EXEC } }
                        { IF_LEFT
+                           { DUP 2 ;
+                             GET 22 ;
+                             PUSH string "lambdaSetKycAddress" ;
+                             PAIR ;
+                             DIG 4 ;
+                             SWAP ;
+                             EXEC ;
+                             SWAP ;
+                             RIGHT (pair nat nat nat) ;
+                             LEFT (or address
+                                      (pair nat
+                                            nat
+                                            nat
+                                            nat
+                                            address
+                                            nat
+                                            nat
+                                            (or (or unit unit) (or unit unit))
+                                            nat
+                                            nat
+                                            address
+                                            bytes
+                                            string)) ;
+                             RIGHT (or (or address address) (or nat address)) ;
+                             RIGHT
+                               (or (or (or address
+                                           (pair nat
+                                                 nat
+                                                 nat
+                                                 address
+                                                 nat
+                                                 nat
+                                                 (or (or unit unit) (or unit unit))
+                                                 nat
+                                                 nat
+                                                 address
+                                                 bytes
+                                                 string))
+                                       (or (pair nat nat address) address))
+                                   (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address)))) ;
+                             LEFT (or (pair string bytes) (pair nat nat address)) ;
+                             DIG 2 ;
+                             SWAP ;
+                             DIG 2 ;
+                             PAIR ;
+                             PAIR ;
+                             EXEC }
                            { DIG 2 ;
                              DIG 3 ;
                              DROP 2 ;
@@ -918,68 +958,32 @@
                              UPDATE ;
                              UPDATE 22 ;
                              NIL operation ;
-                             PAIR }
-                           { DUP 2 ;
-                             GET 22 ;
-                             PUSH string "lambdaSetSuperAdmin" ;
-                             PAIR ;
-                             DIG 4 ;
-                             SWAP ;
-                             EXEC ;
-                             SWAP ;
-                             RIGHT address ;
-                             LEFT (or (pair nat
-                                            nat
-                                            nat
-                                            nat
-                                            address
-                                            nat
-                                            nat
-                                            (or (or unit unit) (or unit unit))
-                                            nat
-                                            nat
-                                            address
-                                            bytes
-                                            (or unit unit))
-                                      (pair string bytes)) ;
-                             RIGHT (or (or address nat) (or address (pair nat nat nat))) ;
-                             RIGHT
-                               (or (or (or address
-                                           (pair nat
-                                                 nat
-                                                 nat
-                                                 address
-                                                 nat
-                                                 nat
-                                                 (or (or unit unit) (or unit unit))
-                                                 nat
-                                                 nat
-                                                 address
-                                                 bytes
-                                                 (or unit unit)))
-                                       (or (pair nat nat address) address))
-                                   (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                                       (or (pair nat address) address))) ;
-                             LEFT (pair nat nat address) ;
-                             DIG 2 ;
-                             SWAP ;
-                             DIG 2 ;
-                             PAIR ;
-                             PAIR ;
-                             EXEC } } } } }
+                             PAIR } } } } }
            { IF_LEFT
                { IF_LEFT
                    { DUP 2 ;
                      GET 22 ;
-                     PUSH string "lambdaUpdateDebt" ;
+                     PUSH string "lambdaSetSuperAdmin" ;
                      PAIR ;
                      DIG 4 ;
                      SWAP ;
                      EXEC ;
                      SWAP ;
-                     LEFT (pair string bytes) ;
-                     RIGHT (or address address) ;
-                     RIGHT (or (or address nat) (or address (pair nat nat nat))) ;
+                     LEFT (pair nat
+                                nat
+                                nat
+                                nat
+                                address
+                                nat
+                                nat
+                                (or (or unit unit) (or unit unit))
+                                nat
+                                nat
+                                address
+                                bytes
+                                string) ;
+                     RIGHT (or (pair nat nat nat) address) ;
+                     RIGHT (or (or address address) (or nat address)) ;
                      RIGHT
                        (or (or (or address
                                    (pair nat
@@ -993,11 +997,10 @@
                                          nat
                                          address
                                          bytes
-                                         (or unit unit)))
+                                         string))
                                (or (pair nat nat address) address))
-                           (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                               (or (pair nat address) address))) ;
-                     LEFT (pair nat nat address) ;
+                           (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address)))) ;
+                     LEFT (or (pair string bytes) (pair nat nat address)) ;
                      DIG 2 ;
                      SWAP ;
                      DIG 2 ;
@@ -1006,28 +1009,15 @@
                      EXEC }
                    { DUP 2 ;
                      GET 22 ;
-                     PUSH string "lambdaUpdateMetadata" ;
+                     PUSH string "lambdaUpdateDebt" ;
                      PAIR ;
                      DIG 4 ;
                      SWAP ;
                      EXEC ;
                      SWAP ;
-                     RIGHT
-                       (pair nat
-                             nat
-                             nat
-                             nat
-                             address
-                             nat
-                             nat
-                             (or (or unit unit) (or unit unit))
-                             nat
-                             nat
-                             address
-                             bytes
-                             (or unit unit)) ;
-                     RIGHT (or address address) ;
-                     RIGHT (or (or address nat) (or address (pair nat nat nat))) ;
+                     RIGHT address ;
+                     RIGHT (or (pair nat nat nat) address) ;
+                     RIGHT (or (or address address) (or nat address)) ;
                      RIGHT
                        (or (or (or address
                                    (pair nat
@@ -1041,64 +1031,111 @@
                                          nat
                                          address
                                          bytes
-                                         (or unit unit)))
+                                         string))
                                (or (pair nat nat address) address))
-                           (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                               (or (pair nat address) address))) ;
-                     LEFT (pair nat nat address) ;
+                           (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address)))) ;
+                     LEFT (or (pair string bytes) (pair nat nat address)) ;
                      DIG 2 ;
                      SWAP ;
                      DIG 2 ;
                      PAIR ;
                      PAIR ;
                      EXEC } }
-               { DUP 2 ;
-                 GET 22 ;
-                 PUSH string "lambdaWithdrawDeposit" ;
-                 PAIR ;
-                 DIG 4 ;
-                 SWAP ;
-                 EXEC ;
-                 SWAP ;
-                 RIGHT
-                   (or (or (or (or address
-                                   (pair nat
-                                         nat
-                                         nat
-                                         address
-                                         nat
-                                         nat
-                                         (or (or unit unit) (or unit unit))
-                                         nat
-                                         nat
-                                         address
-                                         bytes
-                                         (or unit unit)))
-                               (or (pair nat nat address) address))
-                           (or (or (pair nat nat nat address nat bytes (or unit unit)) nat)
-                               (or (pair nat address) address)))
-                       (or (or (or address nat) (or address (pair nat nat nat)))
-                           (or (or address address)
-                               (or (pair nat
-                                         nat
-                                         nat
-                                         nat
-                                         address
-                                         nat
-                                         nat
-                                         (or (or unit unit) (or unit unit))
-                                         nat
-                                         nat
-                                         address
-                                         bytes
-                                         (or unit unit))
-                                   (pair string bytes))))) ;
-                 DIG 2 ;
-                 SWAP ;
-                 DIG 2 ;
-                 PAIR ;
-                 PAIR ;
-                 EXEC } } } ;
+               { IF_LEFT
+                   { DUP 2 ;
+                     GET 22 ;
+                     PUSH string "lambdaUpdateMetadata" ;
+                     PAIR ;
+                     DIG 4 ;
+                     SWAP ;
+                     EXEC ;
+                     SWAP ;
+                     LEFT (pair nat nat address) ;
+                     RIGHT
+                       (or (or (or (or address
+                                       (pair nat
+                                             nat
+                                             nat
+                                             address
+                                             nat
+                                             nat
+                                             (or (or unit unit) (or unit unit))
+                                             nat
+                                             nat
+                                             address
+                                             bytes
+                                             string))
+                                   (or (pair nat nat address) address))
+                               (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address))))
+                           (or (or (or address address) (or nat address))
+                               (or (or (pair nat nat nat) address)
+                                   (or address
+                                       (pair nat
+                                             nat
+                                             nat
+                                             nat
+                                             address
+                                             nat
+                                             nat
+                                             (or (or unit unit) (or unit unit))
+                                             nat
+                                             nat
+                                             address
+                                             bytes
+                                             string))))) ;
+                     DIG 2 ;
+                     SWAP ;
+                     DIG 2 ;
+                     PAIR ;
+                     PAIR ;
+                     EXEC }
+                   { DUP 2 ;
+                     GET 22 ;
+                     PUSH string "lambdaWithdrawDeposit" ;
+                     PAIR ;
+                     DIG 4 ;
+                     SWAP ;
+                     EXEC ;
+                     SWAP ;
+                     RIGHT (pair string bytes) ;
+                     RIGHT
+                       (or (or (or (or address
+                                       (pair nat
+                                             nat
+                                             nat
+                                             address
+                                             nat
+                                             nat
+                                             (or (or unit unit) (or unit unit))
+                                             nat
+                                             nat
+                                             address
+                                             bytes
+                                             string))
+                                   (or (pair nat nat address) address))
+                               (or (or unit (pair nat nat nat address nat bytes string)) (or nat (pair nat address))))
+                           (or (or (or address address) (or nat address))
+                               (or (or (pair nat nat nat) address)
+                                   (or address
+                                       (pair nat
+                                             nat
+                                             nat
+                                             nat
+                                             address
+                                             nat
+                                             nat
+                                             (or (or unit unit) (or unit unit))
+                                             nat
+                                             nat
+                                             address
+                                             bytes
+                                             string))))) ;
+                     DIG 2 ;
+                     SWAP ;
+                     DIG 2 ;
+                     PAIR ;
+                     PAIR ;
+                     EXEC } } } } ;
   view "getDebt"
        nat
        (option
@@ -1113,7 +1150,7 @@
                 (nat %settledDate)
                 (address %nftContractAddress)
                 (bytes %tokenURI)
-                (or %currency (unit %mAV) (unit %uSDC))))
+                (string %currency)))
        { UNPAIR ; SWAP ; GET 19 ; SWAP ; GET } ;
   view "calculateInterest"
        (pair nat nat)

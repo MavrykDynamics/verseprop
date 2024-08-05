@@ -66,7 +66,7 @@ block {
 function getNextTokenId(const tokenContractAddress : address) : int is 
 block {
 
-    const nextTokenView : option(nat) = Tezos.call_view("next_token_id", unit, tokenContractAddress);
+    const nextTokenView : option(nat) = Tezos.call_view("total_supply", unit, tokenContractAddress);
     const nextTokenIdNat : nat = case nextTokenView of [
             Some(_nat) -> _nat
         |   None       -> 0n

@@ -34,7 +34,7 @@ export const debtControllerStorage : debtControllerStorageType = {
 
     metadata                  : metadata,
     
-    debtCounter               : new BigNumber(0),
+    debtCount                 : new BigNumber(0),
     debtLedger                : MichelsonMap.fromLiteral({}),
     investmentLedger          : MichelsonMap.fromLiteral({}),
 

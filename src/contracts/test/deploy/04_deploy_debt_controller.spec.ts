@@ -7,6 +7,12 @@ chai.use(chaiAsPromised)
 chai.should()
 
 // ------------------------------------------------------------------------------
+// Contract Address
+// ------------------------------------------------------------------------------
+
+import contractDeployments from '../contractDeployments.json'
+
+// ------------------------------------------------------------------------------
 // Contract Helpers
 // ------------------------------------------------------------------------------
 
@@ -43,6 +49,7 @@ describe('Debt Controller', async () => {
             // Originate and deploy contracts
             //----------------------------
         
+            debtControllerStorage.kycAddress = contractDeployments.kyc.address;
             debtController = await GeneralContract.originate(utils.tezos, "debtController", debtControllerStorage)
             await saveContractAddress('debtControllerAddress', debtController.contract.address)
 

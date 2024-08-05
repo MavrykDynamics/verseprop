@@ -2,10 +2,6 @@
 // Storage Types
 // ------------------------------------------------------------------------------
 
-type currencyType is 
-    |   MAV         of unit 
-    |   USDC        of unit
-
 type debtStatusType is
     |   OPEN        of unit
     |   FUNDED      of unit
@@ -24,7 +20,7 @@ type debtRecordType is [@layout:comb] record [
     settledDate          : nat;
     nftContractAddress   : address;
     tokenURI             : bytes;
-    currency             : currencyType;
+    currency             : string;
 ]
 
 type debtLedgerType is big_map(nat, debtRecordType)
@@ -54,7 +50,7 @@ type createDebtActionType is [@layout:comb] record [
     _walletAddress        : address; 
     _minInvestmentAmount  : nat;
     _tokenURI             : bytes;
-    _currency             : currencyType;
+    _currency             : string;
 ]
 
 type addDepositActionType is [@layout:comb] record [
@@ -124,7 +120,7 @@ type debtControllerStorageType is [@layout:comb] record [
 
     metadata                  : metadataType;
 
-    debtCounter               : nat;
+    debtCount                 : nat;
     debtLedger                : debtLedgerType;
     investmentLedger          : investmentLedgerType;
 

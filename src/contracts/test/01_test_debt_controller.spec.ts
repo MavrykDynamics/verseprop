@@ -20,13 +20,14 @@ import contractDeployments from './contractDeployments.json'
 // Contract Helpers
 // ------------------------------------------------------------------------------
 
-import { bob, alice, eve, mallory } from '../scripts/sandbox/accounts'
+import { bob, alice, eve, mallory, oscar } from '../scripts/sandbox/accounts'
 import { 
     signerFactory, 
     wait,
     getStorageMapValue,
     makeSnapshotTimestamp,
-    makeTimestamp
+    makeTimestamp, 
+    MAV
 } from './helpers/helperFunctions'
 
 // ------------------------------------------------------------------------------
@@ -50,7 +51,8 @@ describe('Test: Debt Controller', async () => {
     let token_id 
     let tokenAmount
     let operator
-    let operatorKey
+    let operatorKey, actionCounter
+    let tokenURI, currency, amount
 
     // contract instances 
     let superAdminAddress, superAdminInstance, superAdminStorage
@@ -61,7 +63,12 @@ describe('Test: Debt Controller', async () => {
     // user accounts
     let user, userSk
     let admin, adminSk
+    let manager, managerSk
     let sender, receiver
+    let investorOne, investorOneSk
+    let investorTwo, investorTwoSk
+    let debtor, debtorSk
+    let debt, debtId
 
     // contract map value
     let storageMap
@@ -70,12 +77,13 @@ describe('Test: Debt Controller', async () => {
     let updatedContractMapValue
 
     // operations
-    let transferOperation, kycOperation
+    let transferOperation, kycOperation, signOperation
     let superAdminOperation
     let updateOperatorsOperation
     let removeOperatorsOperation
     let setAdminOperation
     let resetAdminOperation
+    let debtControllerOperation
     
     before('setup', async () => {
         
@@ -84,8 +92,22 @@ describe('Test: Debt Controller', async () => {
         tezos = utils.tezos;
         client = new RpcClient(env.networks.development.rpc);
 
-        admin           = eve.pkh 
-        adminSk         = eve.sk 
+        admin           = bob.pkh 
+        adminSk         = bob.sk 
+
+        manager         = eve.pkh
+        managerSk       = eve.sk
+
+        investorOne     = mallory.pkh
+        investorOneSk   = mallory.sk
+
+        investorTwo     = alice.pkh 
+        investorTwoSk   = alice.sk
+
+        debtor          = oscar.pkh
+        debtorSk        = oscar.sk
+
+        tokenURI        = Buffer.from("https://verseprop-byd6bdg5exfnayd3.z02.azurefd.net/static/raven.png", 'ascii').toString('hex');
 
         superAdminAddress   = contractDeployments.superAdmin.address
         superAdminInstance  = await utils.tezos.contract.at(superAdminAddress)
@@ -104,6 +126,7 @@ describe('Test: Debt Controller', async () => {
         debtControllerStorage   = await debtControllerInstance.storage()
 
         console.log('-- -- -- -- -- -- -- -- -- -- -- -- --')
+
     })
 
     beforeEach('storage', async () => {
@@ -113,1558 +136,358 @@ describe('Test: Debt Controller', async () => {
         debtControllerStorage   = await debtControllerInstance.storage()
     })
 
-    describe('Initialise Token - set Token Metadata', function () {
-        it('setTokenMetadata', async () => {
-            try {
+    describe('setup', function () {
 
-                await signerFactory(tezos, adminSk);
-                const token_metadata_list = [
-                    {
-                        token_id : 0,
-                        token_metadata : new MichelsonMap()
-                    },
-                    {
-                        token_id : 1,
-                        token_metadata : new MichelsonMap()
-                    },
-                    {
-                        token_id : 2,
-                        token_metadata : new MichelsonMap()
-                    }
-                ];
+        it('set general admin (bob)', async () => {
 
-                const setTokenMetadataOperation = await rwaTokenInstance.methods.setTokenMetadata(token_metadata_list).send();
-                await setTokenMetadataOperation.confirmation();
+            // Set General Admin on Super Admin Contract to bob
+            const generalAdmin = await superAdminStorage.generalAdminLedger.get(admin);
 
-            } catch (e) {
-                console.log(e)
-            }
-        })
-    })
+            if(generalAdmin == null){
 
-    describe('Minting', function () {
+                actionCounter       = superAdminStorage.actionCounter;
+                superAdminOperation = await superAdminInstance.methods.setGeneralAdmin([admin]).send();
+                await superAdminOperation.confirmation();
 
-        it('Admin should not be able to mint more than 1 token per token id (non-fungible)', async () => {
-            try {
-
-                await signerFactory(tezos, adminSk);
-                let mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 0,
-                        amount : 2,
-                        address : alice.pkh 
-                    }
-                ]);
-                chai.expect(mintOperation.send()).to.be.rejected;
-
-                mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 1,
-                        amount : 2,
-                        address : bob.pkh 
-                    }
-                ]);
-                chai.expect(mintOperation.send()).to.be.rejected;
-
-                mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 2,
-                        amount : 2,
-                        address : mallory.pkh 
-                    }
-                ]);
-                chai.expect(mintOperation.send()).to.be.rejected;
+                superAdminOperation = await superAdminInstance.methods.signAction([actionCounter]).send();
+                await superAdminOperation.confirmation();
 
                 // update storage
-                rwaTokenStorage = await rwaTokenInstance.storage();
+                superAdminStorage = await superAdminInstance.storage()
+            };
 
-                var ledgerKey = {
-                    owner : alice.pkh,
-                    token_id : 0
-                };
-                const aliceToken0Balance    = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.owner     = bob.pkh;
-                ledgerKey.token_id  = 1;
-                const bobToken1Balance      = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.owner     = mallory.pkh;
-                ledgerKey.token_id  = 2;
-                const malloryToken2Balance  = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                assert.equal(aliceToken0Balance     , undefined);
-                assert.equal(bobToken1Balance       , undefined);
-                assert.equal(malloryToken2Balance   , undefined);
-
-            } catch (e) {
-                console.log(e)
-            }
         })
 
-        it('Admin should be able to mint tokens', async () => {
-            try {
+        it('set general admin (debtController)', async () => {
 
-                timestampBeforeMint = makeTimestamp(0);
+            // Set General Admin on Super Admin Contract to debtController
+            const generalAdmin = await superAdminStorage.generalAdminLedger.get(debtControllerAddress);
 
-                await signerFactory(tezos, adminSk);
-                let mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 0,
-                        amount : 1,
-                        address : alice.pkh 
-                    }
-                ]).send();
-                await mintOperation.confirmation();
+            if(generalAdmin == null){
 
-                mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 1,
-                        amount : 1,
-                        address : bob.pkh 
-                    }
-                ]).send();
-                await mintOperation.confirmation();
+                actionCounter       = superAdminStorage.actionCounter;
+                superAdminOperation = await superAdminInstance.methods.setGeneralAdmin([debtControllerAddress]).send();
+                await superAdminOperation.confirmation();
 
-                mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 2,
-                        amount : 1,
-                        address : mallory.pkh 
-                    }
-                ]).send();
-                await mintOperation.confirmation();
-
-                timestampAfterMint = makeTimestamp(0);
-
-            } catch (e) {
-                console.log(e)
-            }
-        })
-
-        it('Admin should not be able to mint additional amounts of tokens', async () => {
-            try {
-
-                await signerFactory(tezos, adminSk);
-                let mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 0,
-                        amount : 1,
-                        address : alice.pkh 
-                    }
-                ]);
-                chai.expect(mintOperation.send()).to.be.rejected;
-
-                mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 1,
-                        amount : 1,
-                        address : bob.pkh 
-                    }
-                ]);
-                chai.expect(mintOperation.send()).to.be.rejected;
-
-                mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 2,
-                        amount : 1,
-                        address : mallory.pkh 
-                    }
-                ]);
-                chai.expect(mintOperation.send()).to.be.rejected;
+                superAdminOperation = await superAdminInstance.methods.signAction([actionCounter]).send();
+                await superAdminOperation.confirmation();
 
                 // update storage
-                rwaTokenStorage = await rwaTokenInstance.storage();
+                superAdminStorage = await superAdminInstance.storage()
+            };
 
-                var ledgerKey = {
-                    owner : alice.pkh,
-                    token_id : 0
-                };
-                const aliceToken0Balance    = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.owner     = bob.pkh;
-                ledgerKey.token_id  = 1;
-                const bobToken1Balance      = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.owner     = mallory.pkh;
-                ledgerKey.token_id  = 2;
-                const malloryToken2Balance  = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                assert.equal(aliceToken0Balance     , 1);
-                assert.equal(bobToken1Balance       , 1);
-                assert.equal(malloryToken2Balance   , 1);
-
-                timestampAfterSecondMint = makeTimestamp(0);
-
-            } catch (e) {
-                console.log(e)
-            }
         })
-    })
 
-    describe('Burn', function () {
+        it('set superAdmin on debtController', async () => {
 
-        it('Admin should not be able to burn more than what the user has', async () => {
-            try {
+            // set super admin from bob to superAdmin address
+            const superAdmin = await debtControllerStorage.superAdmin;
+            if(superAdmin !== superAdminAddress){
 
-                await signerFactory(tezos, adminSk);
-                let burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 0,
-                        amount : 2,
-                        address : alice.pkh 
-                    }
-                ]);
-                chai.expect(burnOperation.send()).to.be.rejected;
+                actionCounter = superAdminStorage.actionCounter;
 
-                burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 1,
-                        amount : 2,
-                        address : bob.pkh 
-                    }
-                ]);
-                chai.expect(burnOperation.send()).to.be.rejected;
+                const setSuperAdminOperation = await debtControllerInstance.methods.setSuperAdmin(superAdminAddress).send();
+                await setSuperAdminOperation.confirmation();
+        
+                const claimSuperAdminOperation = await superAdminInstance.methods.claimSuperAdmin([debtControllerAddress]).send();
+                await claimSuperAdminOperation.confirmation();
+        
+                signOperation = await superAdminInstance.methods.signAction([actionCounter]).send();
+                await signOperation.confirmation();
 
-                burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 2,
-                        amount : 2,
-                        address : mallory.pkh 
-                    }
-                ]);
-                chai.expect(burnOperation.send()).to.be.rejected;
+                // set contract admin
+                superAdminStorage   = await superAdminInstance.storage()
+                actionCounter       = superAdminStorage.actionCounter;
 
-            } catch (e) {
-                console.log(e)
-            }
-        })
-        it('Admin should be able to burn tokens (different token ids belonging to different users)', async () => {
-            try {
+                superAdminOperation = await superAdminInstance.methods.setContractAdmin(admin, [debtControllerAddress]).send();
+                await superAdminOperation.confirmation();
 
-                await signerFactory(tezos, adminSk);
-                let burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 0,
-                        amount : 1,
-                        address : alice.pkh 
-                    }
-                ]).send();
-                await burnOperation.confirmation();
-
-                burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 1,
-                        amount : 1,
-                        address : bob.pkh 
-                    }
-                ]).send();
-                await burnOperation.confirmation();
-
-                burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 2,
-                        amount : 1,
-                        address : mallory.pkh 
-                    }
-                ]).send();
-                await burnOperation.confirmation();
+                signOperation = await superAdminInstance.methods.signAction([actionCounter]).send();
+                await signOperation.confirmation();
 
                 // update storage
-                rwaTokenStorage = await rwaTokenInstance.storage();
-
-                var ledgerKey = {
-                    owner : alice.pkh,
-                    token_id : 0
-                };
-                const aliceToken0Balance    = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.owner     = bob.pkh;
-                ledgerKey.token_id  = 1;
-                const bobToken1Balance      = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.owner     = mallory.pkh;
-                ledgerKey.token_id  = 2;
-                const malloryToken2Balance  = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                assert.equal(aliceToken0Balance     , undefined);
-                assert.equal(bobToken1Balance       , undefined);
-                assert.equal(malloryToken2Balance   , undefined);
-
-            } catch (e) {
-                console.log(e)
-            }
+                superAdminStorage   = await superAdminInstance.storage()
+                const contractAdmin = await superAdminStorage.contractAdminLedger.get([admin, debtControllerAddress]);
+                assert.notEqual(contractAdmin, null);
+            };
+    
         })
 
-        it('Admin should not be able to burn additional amounts of tokens', async () => {
-            try {
 
-                await signerFactory(tezos, adminSk);
-                let burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 0,
-                        amount : 1,
-                        address : alice.pkh 
-                    }
-                ]);
-                chai.expect(burnOperation.send()).to.be.rejected;
+        it('set superAdmin on kyc', async () => {
 
-                burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 1,
-                        amount : 1,
-                        address : bob.pkh 
-                    }
-                ]);
-                chai.expect(burnOperation.send()).to.be.rejected;
+            // set super admin from bob to superAdmin address
+            const superAdmin = await kycStorage.superAdmin;
+            if(superAdmin !== superAdminAddress){
 
-                burnOperation = await rwaTokenInstance.methods.burn([
-                    {
-                        token_id : 2,
-                        amount : 1,
-                        address : mallory.pkh 
-                    }
-                ]);
-                chai.expect(burnOperation.send()).to.be.rejected;
+                actionCounter = superAdminStorage.actionCounter;
+
+                const setSuperAdminOperation = await kycInstance.methods.setSuperAdmin(superAdminAddress).send();
+                await setSuperAdminOperation.confirmation();
+        
+                const claimSuperAdminOperation = await superAdminInstance.methods.claimSuperAdmin([kycAddress]).send();
+                await claimSuperAdminOperation.confirmation();
+        
+                signOperation = await superAdminInstance.methods.signAction([actionCounter]).send();
+                await signOperation.confirmation();
+
+                // set contract admin
+                superAdminStorage   = await superAdminInstance.storage()
+                actionCounter       = superAdminStorage.actionCounter;
+
+                superAdminOperation = await superAdminInstance.methods.setContractAdmin(admin, [kycAddress]).send();
+                await superAdminOperation.confirmation();
+
+                signOperation = await superAdminInstance.methods.signAction([actionCounter]).send();
+                await signOperation.confirmation();
 
                 // update storage
-                rwaTokenStorage = await rwaTokenInstance.storage();
-
-                var ledgerKey = {
-                    owner : alice.pkh,
-                    token_id : 0
-                };
-                const aliceToken0Balance    = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.owner     = bob.pkh;
-                ledgerKey.token_id  = 1;
-                const bobToken1Balance      = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.owner     = mallory.pkh;
-                ledgerKey.token_id  = 2;
-                const malloryToken2Balance  = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                assert.equal(aliceToken0Balance     , undefined);
-                assert.equal(bobToken1Balance       , undefined);
-                assert.equal(malloryToken2Balance   , undefined);
-
-            } catch (e) {
-                console.log(e)
-            }
+                superAdminStorage   = await superAdminInstance.storage()
+                const contractAdmin = await superAdminStorage.contractAdminLedger.get([admin, kycAddress]);
+                assert.notEqual(contractAdmin, null);
+            };
+    
         })
+
+        it('setup kyc', async () => {
+
+            // init kyc registrar and kyc members
+            const kycName                   = "newKycRegistrar";
+            const kycRegistrarAddress       = admin;
+            const kycAdminAddresses         = [admin];
+
+            await signerFactory(tezos, adminSk);
+            kycOperation = await kycInstance.methods.setKycRegistrar(kycName, kycRegistrarAddress, kycAdminAddresses).send();
+            await kycOperation.confirmation();
+
+            // set valid inputs
+            let inputField      = "country";
+            let country         = "france";
+            let inputs          = [country];
+
+            kycOperation = await kycInstance.methods.setValidInput(inputField, inputs).send();
+            await kycOperation.confirmation();
+
+            inputField          = "region";
+            let region          = "europe";
+            inputs              = [region];
+
+            kycOperation = await kycInstance.methods.setValidInput(inputField, inputs).send();
+            await kycOperation.confirmation();
+
+            inputField          = "investorType";
+            let investorType    = "standard";
+            inputs              = [investorType];
+
+            kycOperation = await kycInstance.methods.setValidInput(inputField, inputs).send();
+            await kycOperation.confirmation();
+
+            // set kyc members
+            const setMemberAction = "addMember";
+            const memberList = [
+                {
+                    memberAddress : bob.pkh,
+                    country : country,
+                    region : region,
+                    investorType : investorType
+                },
+                {
+                    memberAddress : eve.pkh,
+                    country : country,
+                    region : region,
+                    investorType : investorType
+                },
+                {
+                    memberAddress : alice.pkh,
+                    country : country,
+                    region : region,
+                    investorType : investorType
+                },
+                {
+                    memberAddress : mallory.pkh,
+                    country : country,
+                    region : region,
+                    investorType : investorType
+                }
+            ];
+
+            kycOperation = await kycInstance.methods.setMember(setMemberAction, memberList).send();
+            await kycOperation.confirmation();
+
+            // set country transfer rule
+            const rule                  = "addNewCountryTransferRule";
+            const ruleValue             = [
+                {
+                    country : country,
+                    whitelistCountries : [],
+                    blacklistCountries : [],
+                    sendingFrozen : false,
+                    receivingFrozen : false
+                }
+            ];
+            
+            kycOperation = await kycInstance.methods.setCountryTransferRule(
+                rule, 
+                ruleValue
+            ).send();
+            await kycOperation.confirmation();
+
+        })
+
     })
 
-
-    describe('Pause', function () {
-
-        it('Admin should be able to pause tokens', async () => {
+    describe('debtLogic', function () {
+        it('should create a new debt', async () => {
             try {
 
                 await signerFactory(tezos, adminSk);
-                let pauseOperation = await rwaTokenInstance.methods.pause().send();
-                await pauseOperation.confirmation();
 
-            } catch (e) {
-                console.log(e)
-            }
-        })
-
-        it('Non-admin (alice) should not be able to pause tokens', async () => {
-            try {
-
-                await signerFactory(tezos, alice.sk);
-                let pauseOperation = await rwaTokenInstance.methods.pause();
-                await chai.expect(pauseOperation.send()).to.be.rejected;
-
-            } catch (e) {
-                console.log(e)
-            }
-        })
-    })
-
-    describe('Unpause', function () {
-
-        it('Non-admin (alice) should not be able to unpause tokens', async () => {
-            try {
-
-                await signerFactory(tezos, alice.sk);
-                let unpauseOperation = await rwaTokenInstance.methods.unpause();
-                await chai.expect(unpauseOperation.send()).to.be.rejected;
-
-            } catch (e) {
-                console.log(e)
-            }
-        })
-
-        it('Admin should be able to unpause tokens', async () => {
-            try {
-
-                await signerFactory(tezos, adminSk);
-                let unpauseOperation = await rwaTokenInstance.methods.unpause().send();
-                await unpauseOperation.confirmation();
-
-            } catch (e) {
-                console.log(e)
-            }
-        })
-    })
-
-    describe('Token Holder Calls', function () {
-
-        it('Bootstrapping by issuing some tokens', async () => {
-            try {
-
-                await signerFactory(tezos, adminSk);
-                let mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 0,
-                        amount : 1,
-                        address : alice.pkh 
-                    }
-                ]).send();
-                await mintOperation.confirmation();
-
-                mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 1,
-                        amount : 1,
-                        address : alice.pkh 
-                    }
-                ]).send();
-                await mintOperation.confirmation();
-
-                mintOperation = await rwaTokenInstance.methods.mint([
-                    {
-                        token_id : 2,
-                        amount : 1,
-                        address : alice.pkh 
-                    }
-                ]).send();
-                await mintOperation.confirmation();
-
-                var ledgerKey = {
-                    owner : alice.pkh,
-                    token_id : 0
-                };
-                const aliceToken0Balance    = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.token_id  = 1;
-                const aliceToken1Balance      = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                ledgerKey.token_id  = 2;
-                const aliceToken2Balance  = await rwaTokenStorage.ledger.get(ledgerKey);
-
-                assert.equal(aliceToken0Balance     , 1);
-                assert.equal(aliceToken1Balance     , 1);
-                assert.equal(aliceToken2Balance     , 1);
-
-            } catch (e) {
-                console.log(e)
-            }
-        })
-
-        describe('Transfer', function () {
-
-            it('Holder with no balance tries transfer', async () => {
-                try {
-
-                    await signerFactory(tezos, bob.sk);
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : bob.pkh,
-                            txs: [
-                                {
-                                    to_: mallory.pkh,
-                                    token_id: 0,
-                                    amount: 1,
-                                },
-                            ]
-                        }
-                    ]);
-                    await chai.expect(transferOperation.send()).to.be.rejected;
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-            it('Admin with no balance tries transfer', async () => {
-                try {
-
-                    await signerFactory(tezos, adminSk);
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : admin,
-                            txs: [
-                                {
-                                    to_: mallory.pkh,
-                                    token_id: 0,
-                                    amount: 1,
-                                },
-                            ]
-                        }
-                    ]);
-                    await chai.expect(transferOperation.send()).to.be.rejected;
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-            it('Admin tries transfer of third parties balance', async () => {
-                try {
-
-                    await signerFactory(tezos, adminSk);
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : alice.pkh,
-                            txs: [
-                                {
-                                    to_: mallory.pkh,
-                                    token_id: 0,
-                                    amount: 1,
-                                },
-                            ]
-                        }
-                    ]);
-                    await chai.expect(transferOperation.send()).to.be.rejected;
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-            it('Owner performs initial transfer of own balance', async () => {
-                try {
-
-                    await signerFactory(tezos, alice.sk);
-                    timestampOne = makeTimestamp(0); // alice transfers 10 tokens to mallory
-
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : alice.pkh,
-                            txs: [
-                                {
-                                    to_: mallory.pkh,
-                                    token_id: 0,
-                                    amount: 1,
-                                },
-                            ]
-                        }
-                    ]).send();
-                    await transferOperation.confirmation();
-
-                    wait(5000);
-                    timestampTwo = makeTimestamp(0); // alice transfers 10 tokens to mallory
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-            it('Owner tries transfer of third party balance', async () => {
-                try {
-
-                    await signerFactory(tezos, alice.sk);
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : mallory.pkh,
-                            txs: [
-                                {
-                                    to_: bob.pkh,
-                                    token_id: 0,
-                                    amount: 1,
-                                },
-                            ]
-                        }
-                    ]);
-                    await chai.expect(transferOperation.send()).to.be.rejected;
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-            it('Holder transfers own balance', async () => {
-                try {
-
-                    await signerFactory(tezos, mallory.sk);
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : mallory.pkh,
-                            txs: [
-                                {
-                                    to_: bob.pkh,
-                                    token_id: 0,
-                                    amount: 1,
-                                },
-                            ]
-                        }
-                    ]).send();
-                    await transferOperation.confirmation();
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-            it('Holder transfers too much', async () => {
-                try {
-
-                    await signerFactory(tezos, mallory.sk);
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : mallory.pkh,
-                            txs: [
-                                {
-                                    to_: bob.pkh,
-                                    token_id: 0,
-                                    amount: 2,
-                                },
-                            ]
-                        }
-                    ]);
-                    await chai.expect(transferOperation.send()).to.be.rejected;
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-        })
-
-
-        describe('Pause/Unpause', function () {
-
-            it('Holder should not be able to transfer paused token', async () => {
-                try {
-
-                    await signerFactory(tezos, adminSk);
-                    let pauseOperation = await rwaTokenInstance.methods.pause().send();
-                    await pauseOperation.confirmation();
-
-                    await signerFactory(tezos, mallory.sk);
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : mallory.pkh,
-                            txs: [
-                                {
-                                    to_: bob.pkh,
-                                    token_id: 0,
-                                    amount: 1,
-                                },
-                            ]
-                        }
-                    ]);
-                    await chai.expect(transferOperation.send()).to.be.rejected;
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-
-            it('Holder should be able to transfer unpaused token', async () => {
-                try {
-
-                    await signerFactory(tezos, adminSk);
-                    const unpauseOperation = await rwaTokenInstance.methods.unpause().send();
-                    await unpauseOperation.confirmation();
-
-                    await signerFactory(tezos, bob.sk);
-                    const transferOperation = await rwaTokenInstance.methods.transfer([
-                        {
-                            from_ : bob.pkh,
-                            txs: [
-                                {
-                                    to_: mallory.pkh,
-                                    token_id: 0,
-                                    amount: 1,
-                                },
-                            ]
-                        }
-                    ]).send();
-                    await transferOperation.confirmation();
-
-                } catch (e) {
-                    console.log(e)
-                }
-            })
-
-        })
-
-        describe('Token KYC', function () {
-
-            before("Set token kyc", async () => {
+                debtId                      = await debtControllerStorage.debtCount
+                const maxAmount             = MAV(100)
+                const interestRate          = 1000; // 10%
+                const term                  = 9; // 9 months
+                user                        = debtor
+                const minInvestmentAmount   = MAV(2)
+                currency                    = "mav"
                 
+                debtControllerOperation = await debtControllerInstance.methods.createDebt(
+                    maxAmount,
+                    interestRate,
+                    term,
+                    user,
+                    minInvestmentAmount,
+                    tokenURI,
+                    currency
+                ).send();
+                await debtControllerOperation.confirmation();
+
+                debtControllerStorage = await debtControllerInstance.storage();
+
+                debt = await debtControllerStorage.debtLedger.get(debtId)
+
+                assert.equal(debt.maxAmount.toNumber()          , maxAmount);
+                assert.equal(debt.interestRate.toNumber()       , interestRate);
+                assert.equal(debt.term.toNumber()               , term);
+                assert.equal(debt.walletAddress                 , user);
+                assert.equal(debt.minInvestmentAmount.toNumber(), minInvestmentAmount);
+                assert.equal(debt.totalInvestment.toNumber()    , 0);
+                assert.equal(debt.tokenURI                      , tokenURI);
+                assert.equal(debt.currency                      , currency);
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should allow admin to add deposits on investors behalf', async () => {
+            try {
+
                 await signerFactory(tezos, adminSk);
-                const setRuleEngineOperation = await rwaTokenInstance.methods.setTokenKyc(contractDeployments.kyc.address).send();
-                await setRuleEngineOperation.confirmation();
 
-                // check that transfer fails now
-                const transferOperation = await rwaTokenInstance.methods.transfer([
-                    {
-                        from_ : alice.pkh,
-                        txs: [
-                            {
-                                to_: mallory.pkh,
-                                token_id: 0,
-                                amount: 1,
-                            },
-                        ]
-                    }
-                ]);
-                await chai.expect(transferOperation.send()).to.be.rejected;
-            });
-
-            // it('Only Admin can unfreeze', async () => {
-            //     try {
-
-            //         await signerFactory(tezos, alice.sk);
-            //         let unfreezeAccountOperation = await freezeRuleEngineInstance.methods.unfreeze_account(alice.pkh);
-            //         await chai.expect(unfreezeAccountOperation.send()).to.be.rejected;
-
-            //         await signerFactory(tezos, adminSk);
-            //         unfreezeAccountOperation = await freezeRuleEngineInstance.methods.unfreeze_account(alice.pkh).send();
-            //         await unfreezeAccountOperation.confirmation();
-
-            //         await signerFactory(tezos, alice.sk);
-            //         transferOperation = await rwaTokenInstance.methods.transfer([
-            //             {
-            //                 from_ : alice.pkh,
-            //                 txs: [
-            //                     {
-            //                         to_: mallory.pkh,
-            //                         token_id: 0,
-            //                         amount: 1,
-            //                     },
-            //                 ]
-            //             }
-            //         ]).send();
-            //         await transferOperation.confirmation();
-
-            //     } catch (e) {
-            //         console.log(e)
-            //     }
-            // })
-
-            // it('Bob still frozen', async () => {
-            //     try {
-
-            //         await signerFactory(tezos, alice.sk);
-            //         const transferOperation = await rwaTokenInstance.methods.transfer([
-            //             {
-            //                 from_ : alice.pkh,
-            //                 txs: [
-            //                     {
-            //                         to_: bob.pkh,
-            //                         token_id: 0,
-            //                         amount: 0,
-            //                     },
-            //                 ]
-            //             }
-            //         ]);
-            //         await chai.expect(transferOperation.send()).to.be.rejected;
-
-            //     } catch (e) {
-            //         console.log(e)
-            //     }
-            // })
-
-            // it('Unfreeze Bob', async () => {
-            //     try {
-
-            //         await signerFactory(tezos, adminSk);
-            //         const unfreezeAccountOperation = await freezeRuleEngineInstance.methods.unfreeze_account(bob.pkh).send();
-            //         await unfreezeAccountOperation.confirmation();
-
-            //     } catch (e) {
-            //         console.log(e)
-            //     }
-            // })
-        })
-
-        describe('Snapshots View Tests', function () {
-
-            describe('View: getUserBalanceAtTimestamp', function () {
-
-                describe('View: getUserBalanceAtTimestamp - basic snapshot check', function () {
-
-                    it('Check user balance before mint (should be zero)', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 0);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should be 1)', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterMint
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after second mint (should be 1 since second mint fails)', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterSecondMint
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance (should fail), with negative start counter', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : -2
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance (should fail), with negative end counter', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : null,
-                                endCounter : -2
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance (should fail), with negative start or end counter', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : -2,
-                                endCounter : -2
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance (should fail), with non-existent token id', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 999,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-                })
-
-                describe('View: getUserBalanceAtTimestamp - user balance before mint', function () {
-
-                    it('Check user balance before mint (should be zero), with start and end counter specified', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : 0,
-                                endCounter : 2
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 0);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance before mint (should be zero), with only start counter specified', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : 0
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 0);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance before mint (should be zero), with only end counter specified', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : null,
-                                endCounter: 2
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 0);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance before mint (should be zero), with start counter specified at its snapshot id (0) - works only for the first snapshot with id 0', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : 0
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 0);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance before mint (should be zero), with end counter as a very high number (999)', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : 0,
-                                endCounter : 999
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 0);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance before mint (should fail), with start counter after given timestamp', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampBeforeMint,
-                                startCounter : 2,
-                                endCounter : 4
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
+                amount  = MAV(3)
+                user    = investorOne
                 
-                })
-
-                describe('View: getUserBalanceAtTimestamp - user balance after first mint', function () {
-
-                    it('Check user balance after mint (should be 1), with start and end counter specified within range', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterMint,
-                                startCounter : 0,
-                                endCounter : 2
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-
-                    it('Check user balance after mint (should be 1), with only start counter specified', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterMint,
-                                startCounter : 0
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should be 1), with only end counter specified', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterMint,
-                                startCounter : null,
-                                endCounter : 2
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should fail), with start counter at its snapshot id (1)', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            // snapshot for timestampAfterMint is at id 1
-                            // - start counter should be less than id 1 (i.e. not inclusive)
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterMint,
-                                startCounter : 1,
-                                endCounter : 2
-                            };
-
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should be 1), with end counter as a very high number (999)', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterMint,
-                                startCounter : 0,
-                                endCounter : 999
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should fail), with start counter after given timestamp', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterMint,
-                                startCounter : 2,
-                                endCounter : 4
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                })
-
-                describe('View: getUserBalanceAtTimestamp - user balance after second mint', function () {
-
-                    it('Check user balance after mint (should be 1), with start and end counter specified within range', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterSecondMint,
-                                startCounter : 0,
-                                endCounter : 2
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-
-                    it('Check user balance after mint (should be 1), with only start counter specified', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterSecondMint,
-                                startCounter : 0
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should be 1), with only end counter specified', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterSecondMint,
-                                startCounter : null,
-                                endCounter : 3
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should fail), with start counter at its snapshot id (2)', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            // snapshot for timestampAfterMint is at id 2
-                            // - start counter should be less than id 2 (i.e. not inclusive)
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterSecondMint,
-                                startCounter : 2,
-                                endCounter : 3
-                            };
-
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should be 1), with end counter as a very high number (999)', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterSecondMint,
-                                startCounter : 0,
-                                endCounter : 999
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey).executeView({ viewCaller : alice.pkh});
-                            assert.equal(aliceTokenBalanceAtTimestamp, 1);
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                    it('Check user balance after mint (should fail), with start counter after given timestamp', async () => {
-                        try {
-
-                            await signerFactory(tezos, alice.sk);
-
-                            const viewKey = {
-                                tokenId : 0,
-                                user : alice.pkh,
-                                timestamp : timestampAfterSecondMint,
-                                startCounter : 3,
-                                endCounter : 5
-                            };
-                            const aliceTokenBalanceAtTimestamp = await rwaTokenInstance.contractViews.getUserBalanceAtTimestamp(viewKey);
-                            await chai.expect(aliceTokenBalanceAtTimestamp.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                        } catch (e) {
-                            console.log(e)
-                        }
-                    })
-
-                })
-
-            })
-
-            describe('View: getUserSnapshots', function () {
-
-                it('Get user snapshots (get the first two snapshots for a user)', async () => {
-                    try {
-
-                        await signerFactory(tezos, alice.sk);
-                        
-                        const viewKey = {
-                            tokenId : 0,
-                            user : alice.pkh,
-                            startCounter : 0,
-                            endCounter : 1
-                        };
-                        const userSnapshots = await rwaTokenInstance.contractViews.getUserSnapshots(viewKey).executeView({ viewCaller : alice.pkh});
-
-                        // console.log("userSnapshots: ", userSnapshots);
-
-                    } catch (e) {
-                        console.log(e)
-                    }
-                })
-
-
-                it('Get user snapshots (get the middle two snapshots for a user)', async () => {
-                    try {
-
-                        await signerFactory(tezos, alice.sk);
-                        
-                        const viewKey = {
-                            tokenId : 0,
-                            user : alice.pkh,
-                            startCounter : 2,
-                            endCounter : 3
-                        };
-                        const userSnapshots = await rwaTokenInstance.contractViews.getUserSnapshots(viewKey).executeView({ viewCaller : alice.pkh});
-
-                        // console.log("userSnapshots: ", userSnapshots);
-
-                    } catch (e) {
-                        console.log(e)
-                    }
-                })
-
-
-                it('Get user snapshots (no start and end counter specified)', async () => {
-                    try {
-
-                        await signerFactory(tezos, alice.sk);
-                        
-                        const viewKey = {
-                            tokenId : 0,
-                            user : alice.pkh
-                        };
-                        const userSnapshots = await rwaTokenInstance.contractViews.getUserSnapshots(viewKey).executeView({ viewCaller : alice.pkh});
-
-                    } catch (e) {
-                        console.log(e)
-                    }
-                })
-
-                it('Get user snapshots (with very high end counter specified)', async () => {
-                    try {
-
-                        await signerFactory(tezos, alice.sk);
-                        
-                        const viewKey = {
-                            tokenId : 0,
-                            user : alice.pkh,
-                            startCounter : null,
-                            endCounter : 999
-                        };
-                        const userSnapshots = await rwaTokenInstance.contractViews.getUserSnapshots(viewKey).executeView({ viewCaller : alice.pkh});
-
-                    } catch (e) {
-                        console.log(e)
-                    }
-                })
-
-                it('Get user snapshots should fail with start counter specified greater than number of user snapshots', async () => {
-                    try {
-
-                        await signerFactory(tezos, alice.sk);
-                        
-                        const viewKey = {
-                            tokenId : 0,
-                            user : alice.pkh,
-                            startCounter : 100
-                        };
-                        const userSnapshots = await rwaTokenInstance.contractViews.getUserSnapshots(viewKey);
-                        await chai.expect(userSnapshots.executeView({ viewCaller : alice.pkh})).to.be.rejected;
-
-                    } catch (e) {
-                        console.log(e)
-                    }
-                })
-            })
-
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount});
+                await debtControllerOperation.confirmation();
+
+                amount = MAV(2)
+                user   = investorTwo
+
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount});
+                await debtControllerOperation.confirmation();
+
+                debtControllerStorage = await debtControllerInstance.storage();
+
+                debt = await debtControllerStorage.debtLedger.get(debtId)
+                assert.equal(debt.totalInvestment.toNumber(), MAV(5));
+
+                let investmentRecord = await debtControllerStorage.investmentLedger.get(debtId)
+                
+                const investorOneAmount = await investmentRecord.valueMap.get('"0"');
+                assert.equal(investorOneAmount, MAV(3))
+
+                const investorTwoAmount = await investmentRecord.valueMap.get('"1"');
+                assert.equal(investorTwoAmount, MAV(2))
+
+            } catch (e) {
+                console.log(e)
+            }
         })
 
+        it('should disburse the loan when the investment goal is reached', async () => {
+            try {
 
-        // describe('Snapshots Stress Tests', function () {
+                await signerFactory(tezos, adminSk);
 
-        //     before('setup transfers', async() => {
+                debtId                      = await debtControllerStorage.debtCount
+                const maxAmount             = MAV(5)
+                const interestRate          = 1000; // 10%
+                const term                  = 9; // 9 months
+                user                        = debtor
+                const minInvestmentAmount   = MAV(2)
+                currency                    = "mav"
+                
+                debtControllerOperation = await debtControllerInstance.methods.createDebt(
+                    maxAmount,
+                    interestRate,
+                    term,
+                    user,
+                    minInvestmentAmount,
+                    tokenURI,
+                    currency
+                ).send();
+                await debtControllerOperation.confirmation();
 
-        //         const numberOfTransfers = 300; // Number of times to perform the transfer
-        //         const minAmount         = 1;  // Minimum token amount
-        //         const maxAmount         = 1;  // Maximum token amount
+                amount  = MAV(3)
+                user    = investorOne
+                
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount});
+                await debtControllerOperation.confirmation();
 
-        //         await performRandomTransfers(
-        //             tezos,
-        //             rwaTokenInstance,   // token 
-        //             alice.pkh,          // sender address
-        //             alice.sk,           // sender sk
-        //             bob.pkh,            // receiver address
-        //             bob.sk,             // receiver sk
-        //             numberOfTransfers, 
-        //             minAmount, 
-        //             maxAmount
-        //         );
+                amount = MAV(2)
+                user   = investorTwo
 
-        //         await performRandomTransfers(
-        //             tezos,
-        //             rwaTokenInstance,   // token 
-        //             alice.pkh,          // sender address
-        //             alice.sk,           // sender sk
-        //             bob.pkh,            // receiver address
-        //             bob.sk,             // receiver sk
-        //             numberOfTransfers, 
-        //             minAmount, 
-        //             maxAmount
-        //         );
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount});
+                await debtControllerOperation.confirmation();
+                
+                debtControllerStorage = await debtControllerInstance.storage();
 
-        //         await performRandomTransfers(
-        //             tezos,
-        //             rwaTokenInstance,   // token 
-        //             alice.pkh,          // sender address
-        //             alice.sk,           // sender sk
-        //             bob.pkh,            // receiver address
-        //             bob.sk,             // receiver sk
-        //             numberOfTransfers, 
-        //             minAmount, 
-        //             maxAmount
-        //         );
+                const initialDebtorBalance  = (await utils.tezos.tz.getBalance(debtor)).toNumber();
 
-        //         await performRandomTransfers(
-        //             tezos,
-        //             rwaTokenInstance,   // token 
-        //             alice.pkh,          // sender address
-        //             alice.sk,           // sender sk
-        //             bob.pkh,            // receiver address
-        //             bob.sk,             // receiver sk
-        //             numberOfTransfers, 
-        //             minAmount, 
-        //             maxAmount
-        //         );
+                debtControllerOperation = await debtControllerInstance.methods.disburseLoan(debtId).send();
+                await debtControllerOperation.confirmation();
 
-        //     })
+                const updatedDebtorBalance  = (await utils.tezos.tz.getBalance(debtor)).toNumber();
 
-        //     it('Get user snapshots (no start and end counter specified)', async () => {
-        //         try {
+                const versePropFee = (maxAmount * 2) / 100;
+                const loanAmount   = maxAmount - versePropFee;
 
-        //             await signerFactory(tezos, alice.sk);
-                    
-        //             const viewKey = {
-        //                 tokenId : 0,
-        //                 user : alice.pkh
-        //             };
-        //             const userSnapshots = await rwaTokenInstance.contractViews.getUserSnapshots(viewKey).executeView({ viewCaller : alice.pkh});
-                    
-        //             console.log("length: ",userSnapshots.length);
-        //             console.log("------------------------")
-        //             // console.log(userSnapshots);
+                assert.equal(updatedDebtorBalance - initialDebtorBalance, loanAmount)
 
-        //         } catch (e) {
-        //             console.log(e)
-        //         }
-        //     })
+                debt = await debtControllerStorage.debtLedger.get(debtId)
+                var debtStatus  = Object.keys(debt.status)[0];
+                assert.equal(debtStatus, "fUNDED");
 
-
-        // })
-
-        // describe('Kill Switch', function () {
-
-        //     it('Non-Admin cannot kill the token contract', async () => {
-        //         try {
-
-        //             await signerFactory(tezos, alice.sk);
-        //             let killOperation = await rwaTokenInstance.methods.kill();
-        //             await chai.expect(killOperation.send()).to.be.rejected;
-
-        //             // update storage
-        //             rwaTokenStorage = await rwaTokenInstance.storage();
-
-        //             const aliceToken0Balance    = await rwaTokenStorage.ledger.get({owner : alice.pkh, token_id : 0});
-        //             const bobToken0Balance      = await rwaTokenStorage.ledger.get({owner : bob.pkh, token_id : 0});
-        //             const malloryToken0Balance  = await rwaTokenStorage.ledger.get({owner : mallory.pkh, token_id : 0});
-
-        //             assert.notEqual(aliceToken0Balance      , null);
-        //             assert.notEqual(bobToken0Balance        , null);
-        //             assert.notEqual(malloryToken0Balance    , null);
-
-        //         } catch (e) {
-        //             console.log(e)
-        //         }
-        //     })
-
-        //     it('Admin can kill the token contract', async () => {
-        //         try {
-
-        //             await signerFactory(tezos, adminSk);
-        //             let killOperation = await rwaTokenInstance.methods.kill().send();
-        //             await killOperation.confirmation();
-
-        //             // update storage
-        //             rwaTokenStorage = await rwaTokenInstance.storage();
-
-        //             const aliceToken0Balance    = await rwaTokenStorage.ledger.get({owner : alice.pkh, token_id : 0});
-        //             const aliceToken1Balance    = await rwaTokenStorage.ledger.get({owner : alice.pkh, token_id : 1});
-        //             const aliceToken2Balance    = await rwaTokenStorage.ledger.get({owner : alice.pkh, token_id : 2});
-
-        //             const bobToken0Balance      = await rwaTokenStorage.ledger.get({owner : bob.pkh, token_id : 0});
-        //             const bobToken1Balance      = await rwaTokenStorage.ledger.get({owner : bob.pkh, token_id : 1});
-        //             const bobToken2Balance      = await rwaTokenStorage.ledger.get({owner : bob.pkh, token_id : 2});
-
-        //             const malloryToken0Balance  = await rwaTokenStorage.ledger.get({owner : mallory.pkh, token_id : 0});
-        //             const malloryToken1Balance  = await rwaTokenStorage.ledger.get({owner : mallory.pkh, token_id : 1});
-        //             const malloryToken2Balance  = await rwaTokenStorage.ledger.get({owner : mallory.pkh, token_id : 2});
-
-        //             assert.equal(aliceToken0Balance     , null);
-        //             assert.equal(aliceToken1Balance     , null);
-        //             assert.equal(aliceToken2Balance     , null);
-                    
-        //             assert.equal(bobToken0Balance       , null);
-        //             assert.equal(bobToken1Balance       , null);
-        //             assert.equal(bobToken2Balance       , null);
-                    
-        //             assert.equal(malloryToken0Balance   , null);
-        //             assert.equal(malloryToken1Balance   , null);
-        //             assert.equal(malloryToken2Balance   , null);
-
-        //         } catch (e) {
-        //             console.log(e)
-        //         }
-        //     })
-
-        //     it('Admin cannot kill the token contract after it has already been killed', async () => {
-        //         try {
-
-        //             await signerFactory(tezos, adminSk);
-        //             let killOperation = await rwaTokenInstance.methods.kill();
-        //             await chai.expect(killOperation.send()).to.be.rejected;
-
-        //             // update storage
-        //             rwaTokenStorage = await rwaTokenInstance.storage();
-
-        //             const aliceToken2Balance = await rwaTokenStorage.ledger.get({owner : alice.pkh, token_id : 2});
-        //             assert.equal(aliceToken2Balance , null);
-                    
-        //         } catch (e) {
-        //             console.log(e)
-        //         }
-        //     })
-
-        // })
+            } catch (e) {
+                console.log(e)
+            }
+        })
 
     })
 

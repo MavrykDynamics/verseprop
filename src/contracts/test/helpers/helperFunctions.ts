@@ -20,6 +20,11 @@ export const rpcNodes = {
 // Signer Factory
 // ------------------------------------------------------------------------------
 
+// MAV Formatter
+export const MAV = (value : number = 1) => {
+    return value * 10**6
+}
+
 export async function signerFactory (tezos, pk) {
     await tezos.setProvider({ signer: await InMemorySigner.fromSecretKey(pk) })
     return tezos

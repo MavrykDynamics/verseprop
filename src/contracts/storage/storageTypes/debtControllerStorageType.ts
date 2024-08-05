@@ -15,7 +15,7 @@ export type debtControllerStorageType = {
     
     metadata                : MichelsonMap<MichelsonMapKey, unknown>;
 
-    debtCounter             : BigNumber;
+    debtCount               : BigNumber;
     debtLedger              : MichelsonMap<MichelsonMapKey, unknown>;
     investmentLedger        : MichelsonMap<MichelsonMapKey, unknown>;
 
