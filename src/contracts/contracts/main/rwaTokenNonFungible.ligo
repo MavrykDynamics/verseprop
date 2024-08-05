@@ -56,19 +56,6 @@ const noOperations : list (operation) = nil;
 
 
 // ------------------------------------------------------------------------------
-// Constants Begin
-// ------------------------------------------------------------------------------
-
-const is_admin : nat = 1n;
-const is_proposed_admin : nat = 2n;
-
-// ------------------------------------------------------------------------------
-// Constants End
-// ------------------------------------------------------------------------------
-
-
-
-// ------------------------------------------------------------------------------
 // Admin Helper Functions Begin
 // ------------------------------------------------------------------------------
 
@@ -263,12 +250,12 @@ block{
 
 
 
-(* view_balance_of
-    - Given a ledger key (consisting of token_id = sp.TNat, owner = sp.TAddress) allows the 
-      consumer to view the current balance.
+(* owner_of
+    - Given a token id (sp.TNat) allows the consumer to view the current owner of a given token id.
 *)
 [@view] function owner_of(const tokenId : nat; var s : rwaTokenStorageType) : option(address) is
     Big_map.find_opt(tokenId, s.ownerLedger)
+
 
 
 
@@ -568,12 +555,7 @@ block {
             token_info = map["" -> token_metadata];
         ];
 
-        const userTokenBalance : nat = case s.ledger[recipient_ledger_key] of [
-                Some(_v) -> _v
-            |   None     -> 0n
-        ];
-
-        const newUserTokenBalance : nat     = userTokenBalance + amount;
+        const newUserTokenBalance : nat = amount;
 
         var userChunkRecord : userChunkRecordType := case s.userChunkLedger[userAddress] of [
                 Some(_record) -> _record
