@@ -18,13 +18,14 @@
     "rimraf": "^3.0.2"
   },
   "scripts": {
-    "pull-sandbox": "TAG=4.4.0 docker-compose -f docker-compose.yml pull",
-    "start-sandbox": "TAG=4.4.0 docker-compose -f docker-compose.yml up -d && bash ./sandbox-init.sh",
+    "pull-sandbox": "TAG=4.7.0 docker-compose -f docker-compose.yml pull",
+    "start-sandbox": "TAG=4.7.0 docker-compose -f docker-compose.yml up -d && bash ./sandbox-init.sh",
     "start-sandbox-m1": "docker run --rm --platform=linux/arm64/v8 --name mavryk-sandbox -e block_time=3 --detach -p 8732:20000 oxheadalpha/flextesa:20230203 limabox start && bash ./sandbox-init.sh",
     "down-sandbox": "docker-compose -f docker-compose.yml down",
     "clear-sandbox": "docker-compose -f docker-compose.yml down -v",
     "restart-sandbox": "yarn clear-sandbox && yarn start-sandbox",
     "generate-error-codes": "bash ./generate-error-codes.sh",
+    
     "compile": "./bash-compile-contracts.sh -c",
     "deploy": "bash ./bash-deploy-contracts.sh -c",
     "test": "bash ./bash-test-contracts.sh -c",

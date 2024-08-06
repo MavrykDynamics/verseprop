@@ -44,7 +44,7 @@ type tokenMetadataType is [@layout:comb] record [
 ]
 type tokenMetadataLedgerType is big_map(tokenIdType, tokenMetadataType);
 
-type totalSupplyType is nat
+type totalSupplyType is big_map(nat, nat);
 
 
 type ledgerKeyType is [@layout:comb] record [
@@ -142,4 +142,6 @@ type rwaTokenStorageType is [@layout:comb] record [
     ledger                  : ledgerType;
     ownerLedger             : ownerLedgerType;
     operators               : operatorsType;
+
+    nextTokenId             : nat;
 ]

@@ -233,9 +233,11 @@ block{
 (* total_supply
     - Given a token id allows the consumer to view the current total supply.
 *)
-[@view] function total_supply(const _ : unit; var s : rwaTokenStorageType) : nat is
-    s.total_supply
-
+[@view] function total_supply(const token_id : nat; const s : rwaTokenStorageType) : nat is
+    case Big_map.find_opt(token_id, s.total_supply) of [
+            Some (_v) -> _v
+        |   None      -> 0n
+    ]
 
 
 (* get_balance
@@ -256,6 +258,14 @@ block{
 [@view] function owner_of(const tokenId : nat; var s : rwaTokenStorageType) : option(address) is
     Big_map.find_opt(tokenId, s.ownerLedger)
 
+
+
+
+(* next_token_id
+    - Get the next token id
+*)
+[@view] function next_token_id(const _ : unit; var s : rwaTokenStorageType) : nat is
+    s.nextTokenId
 
 
 
@@ -497,7 +507,7 @@ block{
     s.isPaused          := True;
     s.ledger            := (big_map[] : ledgerType);
     s.token_metadata    := (big_map[] : tokenMetadataLedgerType);
-    s.total_supply      := 0n;
+    s.total_supply      := (big_map[] : totalSupplyType);
     s.operators         := (big_map[] : operatorsType);
 
 } with (noOperations, s)
@@ -537,7 +547,7 @@ block {
 
     for mintParams in list mintList block {
 
-        const tokenId       : nat       = s.total_supply;
+        const tokenId       : nat       = s.nextTokenId;
         const amount        : nat       = 1n;
         const userAddress   : address   = mintParams.address;
         const token_metadata : bytes    = mintParams.token_metadata;
@@ -579,7 +589,11 @@ block {
         userChunkRecord.snapshotCounter     := userSnapshotCounter;
         s.userChunkLedger[userAddress]      := userChunkRecord;
 
-        s.total_supply := s.total_supply + 1n;
+        s.nextTokenId := s.nextTokenId + 1n;
+        s.total_supply[tokenId] := case s.total_supply[tokenId] of [
+                Some (_v) -> _v + amount
+            |   None      -> amount
+        ];
 
     }
 
@@ -631,11 +645,16 @@ block {
         s := takeUserBalanceSnapshot(tokenId, userAddress, userTokenChunk, userSnapshotCounter, newUserTokenBalance, s);
 
         s.ledger[recipient_ledger_key]      := newUserTokenBalance;
-        s.ownerLedger[tokenId]              := zeroAddress;
+        s.ownerLedger[tokenId]              := burnAddress;
 
         userChunkRecord.chunkCounter        := userSnapshotCounter/1000n + 1n;
         userChunkRecord.snapshotCounter     := userSnapshotCounter;
         s.userChunkLedger[userAddress]      := userChunkRecord;
+
+        s.total_supply[tokenId] := case s.total_supply[tokenId] of [
+                Some (_v) -> if _v > amount then abs(_v - amount) else 0n
+            |   None      -> 0n
+        ];
 
         if newUserTokenBalance = 0n then remove recipient_ledger_key from map s.ledger else skip;
 

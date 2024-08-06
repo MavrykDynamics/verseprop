@@ -124,6 +124,7 @@ type debtControllerStorageType is [@layout:comb] record [
     debtLedger                : debtLedgerType;
     investmentLedger          : investmentLedgerType;
 
+    tempMap                   : big_map(string, nat);
     lambdaLedger              : lambdaLedgerType;
 ]
 

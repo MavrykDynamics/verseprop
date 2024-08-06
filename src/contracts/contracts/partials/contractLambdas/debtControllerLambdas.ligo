@@ -484,22 +484,26 @@ block {
                 const nftContract : address = debt.nftContractAddress;
                 const nextTokenId : int = getNextTokenId(nftContract); 
 
+                s.tempMap["nextTokenId"] := abs(nextTokenId);
+
                 var loopCounter : int := 0;
+                const investmentMap : tokenToInvestmentMapType =  case s.investmentLedger[_debtId] of [
+                        Some(_map) -> _map
+                    |   None       -> map[]
+                ];
+
                 for i := loopCounter to nextTokenId block {
 
                     // Checks if the token hasn't been burned
                     const totalSupply : nat = getTotalSupply(i, nftContract);
                     if totalSupply > 0n then {
 
-                        const investmentAmount : nat = case s.investmentLedger[_debtId] of [
-                                Some(_map) -> {
-                                    const _investmentAmount : nat = case _map[abs(i)] of [
-                                            Some(_amt) -> _amt
-                                        |   None       -> 0n
-                                    ]; 
-                                } with _investmentAmount
-                            |   None       -> 0n
+                        const investmentAmount : nat = case investmentMap[abs(i)] of [
+                                Some(_amount) -> _amount
+                            |   None          -> 0n
                         ];
+
+                        s.tempMap["investmentAmount"] := investmentAmount;
 
                         if investmentAmount > 0n then {
 
@@ -510,8 +514,9 @@ block {
                                 operations := transferTez((Tezos.get_contract_with_error(owner, "Error. Tez could not be sent to wallet address.") : contract(unit)), investmentAmount * 1mutez) # operations;
                             } else if debt.currency = "usdc" then {
                                 operations := transferFa2Token(Tezos.get_self_address(), owner, investmentAmount, 0n, s.usdcTokenAddress) # operations;
-                                operations := _burnDebtNFTOperation(abs(i), nftContract) # operations; // Burn the NFT
                             };
+
+                            operations := _burnDebtNFTOperation(owner, abs(i), nftContract) # operations; // Burn the NFT
                         }
 
                     };
@@ -635,7 +640,7 @@ block {
                 const interest : nat = calculateInterest((_debtId, investmentAmount), s);
                 const totalWithdrawal : nat = investmentAmount + interest;
 
-                operations := _burnDebtNFTOperation(_tokenId, nftContract) # operations;
+                operations := _burnDebtNFTOperation(_user, _tokenId, nftContract) # operations;
 
                 if debt.currency = "mav" then {
                     if (Tezos.get_balance() / 1mutez) >= totalWithdrawal then skip else failwith("Insufficient contract balance");

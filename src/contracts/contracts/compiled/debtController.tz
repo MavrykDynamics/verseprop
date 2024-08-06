@@ -72,6 +72,7 @@
                    (bytes %tokenURI)
                    (string %currency)))
           (big_map %investmentLedger nat (map nat nat))
+          (big_map %tempMap string nat)
           (big_map %lambdaLedger string bytes)) ;
   code { LAMBDA
            (pair string (big_map string bytes))
@@ -135,6 +136,7 @@
                           bytes
                           string))
                  (big_map nat (map nat nat))
+                 (big_map string nat)
                  (big_map string bytes))
            (pair (list operation)
                  (set address)
@@ -161,6 +163,7 @@
                           bytes
                           string))
                  (big_map nat (map nat nat))
+                 (big_map string nat)
                  (big_map string bytes))
            { UNPAIR ;
              UNPAIR ;
@@ -238,6 +241,7 @@
                                  (bytes %tokenURI)
                                  (string %currency)))
                         (big_map %investmentLedger nat (map nat nat))
+                        (big_map %tempMap string nat)
                         (big_map %lambdaLedger string bytes))
                   (pair (list operation)
                         (set %admins address)
@@ -264,6 +268,7 @@
                                  (bytes %tokenURI)
                                  (string %currency)))
                         (big_map %investmentLedger nat (map nat nat))
+                        (big_map %tempMap string nat)
                         (big_map %lambdaLedger string bytes))) ;
              IF_NONE { DROP 2 ; PUSH nat 3 ; FAILWITH } { DUG 2 ; PAIR ; EXEC } } ;
          DIG 2 ;
@@ -274,7 +279,7 @@
                    { IF_LEFT
                        { IF_LEFT
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaAddAdmin" ;
                              PAIR ;
                              DIG 4 ;
@@ -319,7 +324,7 @@
                              PAIR ;
                              EXEC }
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaAddDebt" ;
                              PAIR ;
                              DIG 4 ;
@@ -354,7 +359,7 @@
                              EXEC } }
                        { IF_LEFT
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaAddDeposit" ;
                              PAIR ;
                              DIG 4 ;
@@ -401,7 +406,7 @@
                              PAIR ;
                              EXEC }
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaAddManager" ;
                              PAIR ;
                              DIG 4 ;
@@ -451,7 +456,7 @@
                        { IF_LEFT
                            { DROP ;
                              DUP ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaClaimSuperAdmin" ;
                              PAIR ;
                              DIG 3 ;
@@ -499,7 +504,7 @@
                              PAIR ;
                              EXEC }
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaCreateDebt" ;
                              PAIR ;
                              DIG 4 ;
@@ -549,7 +554,7 @@
                        { IF_LEFT
                            { DIG 2 ; DIG 3 ; DROP 3 ; NIL operation ; PAIR }
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaDisburseLoan" ;
                              PAIR ;
                              DIG 4 ;
@@ -600,7 +605,7 @@
                    { IF_LEFT
                        { IF_LEFT
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaPayOffDebt" ;
                              PAIR ;
                              DIG 4 ;
@@ -648,7 +653,7 @@
                              PAIR ;
                              EXEC }
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaRemoveAdmin" ;
                              PAIR ;
                              DIG 4 ;
@@ -697,7 +702,7 @@
                              EXEC } }
                        { IF_LEFT
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaRemoveManager" ;
                              PAIR ;
                              DIG 4 ;
@@ -745,7 +750,7 @@
                              PAIR ;
                              EXEC }
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaReturnDeposit" ;
                              PAIR ;
                              DIG 4 ;
@@ -795,7 +800,7 @@
                    { IF_LEFT
                        { IF_LEFT
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaSetFeeWallet" ;
                              PAIR ;
                              DIG 4 ;
@@ -843,7 +848,7 @@
                              PAIR ;
                              EXEC }
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaSetInvestment" ;
                              PAIR ;
                              DIG 4 ;
@@ -891,7 +896,7 @@
                              EXEC } }
                        { IF_LEFT
                            { DUP 2 ;
-                             GET 22 ;
+                             GET 24 ;
                              PUSH string "lambdaSetKycAddress" ;
                              PAIR ;
                              DIG 4 ;
@@ -947,7 +952,7 @@
                              MEM ;
                              IF {} { PUSH nat 15 ; FAILWITH } ;
                              DUP ;
-                             GET 22 ;
+                             GET 24 ;
                              DUP 3 ;
                              CDR ;
                              DIG 3 ;
@@ -956,13 +961,13 @@
                              SOME ;
                              SWAP ;
                              UPDATE ;
-                             UPDATE 22 ;
+                             UPDATE 24 ;
                              NIL operation ;
                              PAIR } } } } }
            { IF_LEFT
                { IF_LEFT
                    { DUP 2 ;
-                     GET 22 ;
+                     GET 24 ;
                      PUSH string "lambdaSetSuperAdmin" ;
                      PAIR ;
                      DIG 4 ;
@@ -1008,7 +1013,7 @@
                      PAIR ;
                      EXEC }
                    { DUP 2 ;
-                     GET 22 ;
+                     GET 24 ;
                      PUSH string "lambdaUpdateDebt" ;
                      PAIR ;
                      DIG 4 ;
@@ -1043,7 +1048,7 @@
                      EXEC } }
                { IF_LEFT
                    { DUP 2 ;
-                     GET 22 ;
+                     GET 24 ;
                      PUSH string "lambdaUpdateMetadata" ;
                      PAIR ;
                      DIG 4 ;
@@ -1090,7 +1095,7 @@
                      PAIR ;
                      EXEC }
                    { DUP 2 ;
-                     GET 22 ;
+                     GET 24 ;
                      PUSH string "lambdaWithdrawDeposit" ;
                      PAIR ;
                      DIG 4 ;
@@ -1189,5 +1194,5 @@
   view "getLambdaOpt"
        string
        (option bytes)
-       { UNPAIR ; SWAP ; GET 22 ; SWAP ; GET } }
+       { UNPAIR ; SWAP ; GET 24 ; SWAP ; GET } }
 

@@ -16,6 +16,10 @@ chai.should()
 
 import contractDeployments from './contractDeployments.json'
 
+import { GeneralContract } from './helpers/deploymentTestHelper'
+
+import { rwaTokenNonFungibleStorage } from '../storage/rwaTokenNonFungibleStorage'
+
 // ------------------------------------------------------------------------------
 // Contract Helpers
 // ------------------------------------------------------------------------------
@@ -53,6 +57,7 @@ describe('Test: Debt Controller', async () => {
     let operator
     let operatorKey, actionCounter
     let tokenURI, currency, amount
+    let debtNFT, debtNFTInstance, debtNFTStorage, nextTokenId
 
     // contract instances 
     let superAdminAddress, superAdminInstance, superAdminStorage
@@ -64,25 +69,17 @@ describe('Test: Debt Controller', async () => {
     let user, userSk
     let admin, adminSk
     let manager, managerSk
-    let sender, receiver
     let investorOne, investorOneSk
     let investorTwo, investorTwoSk
     let debtor, debtorSk
     let debt, debtId
 
     // contract map value
-    let storageMap
-    let contractMapKey
-    let initialContractMapValue
-    let updatedContractMapValue
+    let burnAddress
 
     // operations
-    let transferOperation, kycOperation, signOperation
+    let kycOperation, signOperation, debtNFTOperation
     let superAdminOperation
-    let updateOperatorsOperation
-    let removeOperatorsOperation
-    let setAdminOperation
-    let resetAdminOperation
     let debtControllerOperation
     
     before('setup', async () => {
@@ -106,6 +103,8 @@ describe('Test: Debt Controller', async () => {
 
         debtor          = oscar.pkh
         debtorSk        = oscar.sk
+
+        burnAddress     = "tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg"
 
         tokenURI        = Buffer.from("https://verseprop-byd6bdg5exfnayd3.z02.azurefd.net/static/raven.png", 'ascii').toString('hex');
 
@@ -134,6 +133,8 @@ describe('Test: Debt Controller', async () => {
         kycStorage              = await kycInstance.storage()
         rwaTokenStorage         = await rwaTokenInstance.storage()
         debtControllerStorage   = await debtControllerInstance.storage()
+
+        await signerFactory(tezos, adminSk)
     })
 
     describe('setup', function () {
@@ -256,7 +257,6 @@ describe('Test: Debt Controller', async () => {
             const kycRegistrarAddress       = admin;
             const kycAdminAddresses         = [admin];
 
-            await signerFactory(tezos, adminSk);
             kycOperation = await kycInstance.methods.setKycRegistrar(kycName, kycRegistrarAddress, kycAdminAddresses).send();
             await kycOperation.confirmation();
 
@@ -340,8 +340,6 @@ describe('Test: Debt Controller', async () => {
         it('should create a new debt', async () => {
             try {
 
-                await signerFactory(tezos, adminSk);
-
                 debtId                      = await debtControllerStorage.debtCount
                 const maxAmount             = MAV(100)
                 const interestRate          = 1000; // 10%
@@ -381,8 +379,6 @@ describe('Test: Debt Controller', async () => {
 
         it('should allow admin to add deposits on investors behalf', async () => {
             try {
-
-                await signerFactory(tezos, adminSk);
 
                 amount  = MAV(3)
                 user    = investorOne
@@ -424,8 +420,6 @@ describe('Test: Debt Controller', async () => {
 
         it('should disburse the loan when the investment goal is reached', async () => {
             try {
-
-                await signerFactory(tezos, adminSk);
 
                 debtId                      = await debtControllerStorage.debtCount
                 const maxAmount             = MAV(5)
@@ -489,6 +483,233 @@ describe('Test: Debt Controller', async () => {
             }
         })
 
+        it('should return deposits if the loan is not disbursed', async () => {
+            try {
+
+                debtId                      = await debtControllerStorage.debtCount
+                const maxAmount             = MAV(100)
+                const interestRate          = 1000; // 10%
+                const term                  = 9; // 9 months
+                user                        = debtor
+                const minInvestmentAmount   = MAV(2)
+                currency                    = "mav"
+                
+                debtControllerOperation = await debtControllerInstance.methods.createDebt(
+                    maxAmount,
+                    interestRate,
+                    term,
+                    user,
+                    minInvestmentAmount,
+                    tokenURI,
+                    currency
+                ).send();
+                await debtControllerOperation.confirmation();
+
+                amount  = MAV(3)
+                user    = investorOne
+                
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount});
+                await debtControllerOperation.confirmation();
+
+                amount = MAV(2)
+                user   = investorTwo
+
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount});
+                await debtControllerOperation.confirmation();
+                
+                debtControllerStorage = await debtControllerInstance.storage();
+
+                const initialInvestorOneBalance  = (await utils.tezos.tz.getBalance(investorOne)).toNumber();
+                const initialInvestorTwoBalance  = (await utils.tezos.tz.getBalance(investorTwo)).toNumber();
+
+                debtControllerOperation = await debtControllerInstance.methods.returnDeposit(debtId).send();
+                await debtControllerOperation.confirmation();
+
+                const updatedInvestorOneBalance  = (await utils.tezos.tz.getBalance(investorOne)).toNumber();
+                const updatedInvestorTwoBalance  = (await utils.tezos.tz.getBalance(investorTwo)).toNumber();
+
+                assert.equal(updatedInvestorOneBalance - initialInvestorOneBalance, MAV(3))
+                assert.equal(updatedInvestorTwoBalance - initialInvestorTwoBalance, MAV(2))
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should allow paying off the debt', async () => {
+            try {
+
+                debtId                      = await debtControllerStorage.debtCount
+                const maxAmount             = MAV(10)
+                const interestRate          = 1000;     // 10%
+                const term                  = 9;        // 9 months
+                user                        = debtor
+                const minInvestmentAmount   = MAV(2)
+                currency                    = "mav"
+                
+                debtControllerOperation = await debtControllerInstance.methods.createDebt(
+                    maxAmount,
+                    interestRate,
+                    term,
+                    user,
+                    minInvestmentAmount,
+                    tokenURI,
+                    currency
+                ).send();
+                await debtControllerOperation.confirmation();
+
+                amount  = MAV(7)
+                user    = investorOne
+                
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount });
+                await debtControllerOperation.confirmation();
+
+                amount = MAV(3)
+                user   = investorTwo
+
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount });
+                await debtControllerOperation.confirmation();
+
+                // disburse loan
+                debtControllerOperation = await debtControllerInstance.methods.disburseLoan(debtId).send();
+                await debtControllerOperation.confirmation();
+                
+                debtControllerStorage = await debtControllerInstance.storage();
+
+                const initialDebtorBalance    = (await utils.tezos.tz.getBalance(debtor)).toNumber();
+                const initialContractBalance  = (await utils.tezos.tz.getBalance(debtControllerAddress)).toNumber();
+
+                const interestAccrued = await debtControllerInstance.contractViews.calculateInterest([0, maxAmount]).executeView({ viewCaller : admin});
+                const totalPayment    = maxAmount + interestAccrued;
+
+                // pay off debt
+                debtControllerOperation = await debtControllerInstance.methods.payOffDebt(debtId, admin).send({ mutez : true, amount : totalPayment });
+                await debtControllerOperation.confirmation();
+
+                const updatedDebtorBalance    = (await utils.tezos.tz.getBalance(debtor)).toNumber();
+                const updatedContractBalance  = (await utils.tezos.tz.getBalance(debtControllerAddress)).toNumber();
+
+                assert.equal(updatedContractBalance - initialContractBalance, totalPayment)
+                assert.equal(updatedDebtorBalance - initialDebtorBalance, 0)
+
+                debt = await debtControllerStorage.debtLedger.get(debtId)
+                var debtStatus  = Object.keys(debt.status)[0];
+                assert.equal(debtStatus, "sETTLED");
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should allow NFT owner to withdraw deposit after paying off the debt', async () => {
+            try {
+
+                debtId                      = await debtControllerStorage.debtCount
+                const maxAmount             = MAV(10)
+                const interestRate          = 1000; // 10%
+                const term                  = 9; // 9 months
+                user                        = debtor
+                const minInvestmentAmount   = MAV(2)
+                currency                    = "mav"
+                
+                debtControllerOperation = await debtControllerInstance.methods.createDebt(
+                    maxAmount,
+                    interestRate,
+                    term,
+                    user,
+                    minInvestmentAmount,
+                    tokenURI,
+                    currency
+                ).send();
+                await debtControllerOperation.confirmation();
+
+                amount  = MAV(7)
+                user    = investorOne
+                
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount});
+                await debtControllerOperation.confirmation();
+
+                amount = MAV(3)
+                user   = investorTwo
+
+                debtControllerOperation = await debtControllerInstance.methods.addDeposit(
+                    debtId,
+                    amount,
+                    user
+                ).send({ mutez : true, amount : amount});
+                await debtControllerOperation.confirmation();
+                
+                debtControllerStorage = await debtControllerInstance.storage();
+                debt                  = await debtControllerStorage.debtLedger.get(debtId)
+
+                // set debt NFT contract instance
+                const debtNFTAddress = debt.nftContractAddress;
+                const debtNFTInstance = await utils.tezos.contract.at(debtNFTAddress)
+
+                let tokenZeroOwnerOf = await debtNFTInstance.contractViews.owner_of(0).executeView({ viewCaller : admin});
+                let tokenOneOwnerOf  = await debtNFTInstance.contractViews.owner_of(1).executeView({ viewCaller : admin});
+
+                assert.equal(tokenZeroOwnerOf, investorOne);
+                assert.equal(tokenOneOwnerOf , investorTwo);
+
+                // disburse loan
+                debtControllerOperation = await debtControllerInstance.methods.disburseLoan(debtId).send();
+                await debtControllerOperation.confirmation();
+
+                const interestAccrued = await debtControllerInstance.contractViews.calculateInterest([0, maxAmount]).executeView({ viewCaller : admin});
+                const totalPayment    = maxAmount + interestAccrued;
+
+                // pay off debt
+                debtControllerOperation = await debtControllerInstance.methods.payOffDebt(debtId, admin).send({ mutez : true, amount : totalPayment });
+                await debtControllerOperation.confirmation();
+
+                const initialInvestorOneBalance  = (await utils.tezos.tz.getBalance(investorOne)).toNumber();
+                const initialInvestorTwoBalance  = (await utils.tezos.tz.getBalance(investorTwo)).toNumber();
+
+                debtControllerOperation = await debtControllerInstance.methods.withdrawDeposit(debtId, 0, investorOne).send();
+                await debtControllerOperation.confirmation();
+
+                debtControllerOperation = await debtControllerInstance.methods.withdrawDeposit(debtId, 1, investorTwo).send();
+                await debtControllerOperation.confirmation();
+
+                const updatedInvestorOneBalance  = (await utils.tezos.tz.getBalance(investorOne)).toNumber();
+                const updatedInvestorTwoBalance  = (await utils.tezos.tz.getBalance(investorTwo)).toNumber();
+
+                assert.equal(updatedInvestorOneBalance - initialInvestorOneBalance, MAV(7))
+                assert.equal(updatedInvestorTwoBalance - initialInvestorTwoBalance, MAV(3))
+
+                tokenZeroOwnerOf = await debtNFTInstance.contractViews.owner_of(0).executeView({ viewCaller : admin});
+                tokenOneOwnerOf  = await debtNFTInstance.contractViews.owner_of(1).executeView({ viewCaller : admin});
+
+                assert.equal(tokenZeroOwnerOf, burnAddress);
+                assert.equal(tokenOneOwnerOf , burnAddress);
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
     })
 
+    
 })

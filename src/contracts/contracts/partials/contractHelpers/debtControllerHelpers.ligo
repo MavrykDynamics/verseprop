@@ -19,12 +19,12 @@ function getMintEntrypoint(const tokenAddress : address) : contract(list(mintTyp
 
 
 // helper function to get burn entrypoint
-function getBurnEntrypoint(const tokenAddress : address) : contract(list(nat)) is
+function getBurnEntrypoint(const tokenAddress : address) : contract(list(burnType)) is
     case (Tezos.get_entrypoint_opt(
         "%burn",
-        tokenAddress) : option(contract(list(nat)))) of [
+        tokenAddress) : option(contract(list(burnType)))) of [
                 Some(contr) -> contr
-            |   None -> (failwith(error_BURN_ENTRYPOINT_IN_FA2_CONTRACT_NOT_FOUND) : contract(list(nat)))
+            |   None -> (failwith(error_BURN_ENTRYPOINT_IN_FA2_CONTRACT_NOT_FOUND) : contract(list(burnType)))
         ];
 
 // ------------------------------------------------------------------------------
@@ -53,10 +53,13 @@ block {
 function ownerOf(const tokenId : nat; const tokenContractAddress : address) : address is 
 block {
 
-    const ownerOfView : option(address) = Tezos.call_view("owner_of", tokenId, tokenContractAddress);
+    const ownerOfView : option(option(address)) = Tezos.call_view("owner_of", tokenId, tokenContractAddress);
     const owner : address = case ownerOfView of [
-            Some(_address) -> _address
-        |   None           -> failwith("Owner not found.")
+            Some(_addressView) -> case _addressView of [
+                    Some(_address) -> _address
+                |   None           -> failwith("Owner not found.")
+            ]
+        |   None           -> failwith("owner_of view not found.")
     ];
 
 } with owner
@@ -66,7 +69,7 @@ block {
 function getNextTokenId(const tokenContractAddress : address) : int is 
 block {
 
-    const nextTokenView : option(nat) = Tezos.call_view("total_supply", unit, tokenContractAddress);
+    const nextTokenView : option(nat) = Tezos.call_view("next_token_id", unit, tokenContractAddress);
     const nextTokenIdNat : nat = case nextTokenView of [
             Some(_nat) -> _nat
         |   None       -> 0n
@@ -81,7 +84,7 @@ function getTotalSupply(const tokenIdInt : int; const tokenContractAddress : add
 block {
 
     const tokenId : nat = abs(tokenIdInt);
-    const getTotalSupplyView : option(nat) = Tezos.call_view("view_total_supply", tokenId, tokenContractAddress);
+    const getTotalSupplyView : option(nat) = Tezos.call_view("total_supply", tokenId, tokenContractAddress);
     const totalSupply : nat = case getTotalSupplyView of [
             Some(_nat) -> _nat
         |   None       -> 0n
@@ -109,11 +112,16 @@ block {
 
 
 
-function _burnDebtNFTOperation(const tokenId : nat; const tokenContractAddress : address) : operation is
+function _burnDebtNFTOperation(const user : address; const tokenId : nat; const tokenContractAddress : address) : operation is
 block {
 
+    const burnParams : burnType = record [
+        token_id   = tokenId;
+        address    = user;
+    ];
+
     const burnOperation : operation = Tezos.transaction(
-        list[tokenId],
+        list[burnParams],
         0tez,
         getBurnEntrypoint(tokenContractAddress)
     );
@@ -165,7 +173,7 @@ block {
 
         metadata                    = big_map [];
         token_metadata              = big_map [];
-        total_supply                = 0n;
+        total_supply                = big_map [];
 
         userChunkLedger             = big_map [];
         snapshotLedger              = big_map [];
@@ -173,6 +181,8 @@ block {
         ledger                      = big_map [];
         ownerLedger                 = big_map [];
         operators                   = big_map [];
+
+        nextTokenId                 = 0n;
     ];
 
 } with originatedRwaTokenStorageType 

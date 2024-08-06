@@ -38,6 +38,8 @@ export const debtControllerStorage : debtControllerStorageType = {
     debtLedger                : MichelsonMap.fromLiteral({}),
     investmentLedger          : MichelsonMap.fromLiteral({}),
 
+    tempMap                   : MichelsonMap.fromLiteral({}),
+
     lambdaLedger              : MichelsonMap.fromLiteral({})
 
 };

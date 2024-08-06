@@ -24,6 +24,7 @@ import { debtControllerStorageType }        from "../../storage/storageTypes/deb
 // Tokens Storage Type
 import { mavrykFa2TokenStorageType }        from "../../storage/storageTypes/mavrykFa2TokenStorageType";
 import { mavrykFa12TokenStorageType }       from "../../storage/storageTypes/mavrykFa12TokenStorageType";
+import { rwaTokenNonFungibleStorageType }   from "../../storage/storageTypes/rwaTokenNonFungibleStorageType";
 
 
 // Contract Lambdas
@@ -46,7 +47,8 @@ type generalContractStorageType =
     
     // tokens
     mavrykFa12TokenStorageType | 
-    mavrykFa2TokenStorageType 
+    mavrykFa2TokenStorageType | 
+    rwaTokenNonFungibleStorageType
     
 
 type GeneralContractContractMethods<T extends ContractProvider | Wallet> = {

@@ -19,6 +19,8 @@ export type debtControllerStorageType = {
     debtLedger              : MichelsonMap<MichelsonMapKey, unknown>;
     investmentLedger        : MichelsonMap<MichelsonMapKey, unknown>;
 
+    tempMap                 : MichelsonMap<MichelsonMapKey, unknown>;
+
     lambdaLedger            : MichelsonMap<MichelsonMapKey, unknown>;
 
 };

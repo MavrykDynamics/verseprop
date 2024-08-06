@@ -15,7 +15,7 @@ export const rwaTokenNonFungibleStorage : rwaTokenNonFungibleStorageType = {
     metadata                : MichelsonMap.fromLiteral({}),
 
     token_metadata          : MichelsonMap.fromLiteral({}),
-    total_supply            : new BigNumber(0),
+    total_supply            : MichelsonMap.fromLiteral({}),
 
     userChunkLedger         : MichelsonMap.fromLiteral({}),
     snapshotLedger          : MichelsonMap.fromLiteral({}),
@@ -23,4 +23,6 @@ export const rwaTokenNonFungibleStorage : rwaTokenNonFungibleStorageType = {
     ledger                  : MichelsonMap.fromLiteral({}),
     ownerLedger             : MichelsonMap.fromLiteral({}),
     operators               : MichelsonMap.fromLiteral({}),
+
+    nextTokenId             : new BigNumber(0),
 };
