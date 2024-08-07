@@ -41,7 +41,7 @@ for contract_test in "${CONTRACTS_TEST_ARRAY[@]}"; do
             ;;
         all)
             echo "Running all tests"
-            
+            COMMANDS+=("yarn ts-mocha --paths test/01_test_debt_controller.spec.ts --bail --timeout 9000000")
             ;;
         *)
             echo "Unknown contract test: $contract_test"

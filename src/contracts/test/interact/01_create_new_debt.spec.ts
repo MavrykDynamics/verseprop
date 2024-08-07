@@ -1,4 +1,4 @@
-import { Utils } from "../helpers/Utils.js"
+import { Utils } from "../helpers/Utils"
 
 const chai = require('chai')
 const chaiAsPromised = require('chai-as-promised')
@@ -21,7 +21,7 @@ import {
     signerFactory,
     updateOperators,
     MAV
-} from '../helpers/helperFunctions.js'
+} from '../helpers/helperFunctions'
 
 // ------------------------------------------------------------------------------
 // Contract Storage
@@ -105,8 +105,9 @@ describe('Interact: Create New Debt', async () => {
             maxAmount             = MAV(10)
             interestRate          = 1000;     // 10%
             term                  = 9;        // 9 months
-            walletAddress         = ""        // mv1 address
+            walletAddress         = admin     // mv1 address
             minInvestmentAmount   = MAV(2)
+            tokenURI              = "https://verseprop-byd6bdg5exfnayd3.z02.azurefd.net/static/raven.png"
             currency              = "mav"     // mav or usdc only
 
             //----------------------------
@@ -142,13 +143,15 @@ describe('Interact: Create New Debt', async () => {
     it('create new debt', async () => {
         try {
 
+            const tokenURIHex        = Buffer.from(tokenURI, 'ascii').toString('hex');
+
             debtControllerOperation = await debtControllerInstance.methods.createDebt(
                 maxAmount,
                 interestRate,
                 term,
                 walletAddress,
                 minInvestmentAmount,
-                tokenURI,
+                tokenURIHex,
                 currency
             ).send();
             await debtControllerOperation.confirmation();

@@ -1,4 +1,5 @@
-import { Utils } from "../helpers/Utils.js"
+import { Utils } from "../helpers/Utils"
+const saveContractAddress = require("../helpers/saveContractAddress")
 
 const chai = require('chai')
 const chaiAsPromised = require('chai-as-promised')
@@ -22,12 +23,15 @@ import { GeneralContract, setGeneralContractLambdas } from '../helpers/deploymen
 import { 
     signerFactory,
     updateOperators
-} from '../helpers/helperFunctions.js'
+} from '../helpers/helperFunctions'
 
 // ------------------------------------------------------------------------------
 // Contract Storage
 // ------------------------------------------------------------------------------
 
+import { superAdminStorage } from '../../storage/superAdminStorage'
+import { kycStorage } from '../../storage/kycStorage'
+import { debtControllerStorage } from '../../storage/debtControllerStorage'
 
 // ------------------------------------------------------------------------------
 // Contract Deployment Start
@@ -42,9 +46,10 @@ describe('Interact: Deploy Debt Controller', async () => {
 
     let superAdminAddress, kycAddress, debtControllerAddress, usdtTokenAddress, debtNFTAddress
 
-    let superAdminInstance, superAdminStorage
-    let kycInstance, kycStorage
-    let debtControllerInstance, debtControllerStorage
+    let superAdminInstance
+    let superAdminInstanceStorage, kycInstanceStorage, debtControllerInstanceStorage
+    let kycInstance
+    let debtControllerInstance
     let admin, adminSk, kycRegistrarSk
 
     let kycOperation, signOperation, superAdminOperation, actionCounter
@@ -98,19 +103,6 @@ describe('Interact: Deploy Debt Controller', async () => {
 
             await signerFactory(tezos, adminSk);
 
-            //----------------------------
-            // Setup contracts
-            //----------------------------
-
-            superAdminInstance              = await utils.tezos.contract.at(superAdminAddress)
-            superAdminStorage               = await superAdminInstance.storage()
-
-            kycInstance                     = await utils.tezos.contract.at(kycAddress);
-            kycStorage                      = await kycInstance.storage()
-
-            debtControllerInstance          = await utils.tezos.contract.at(debtControllerAddress);
-            debtControllerStorage           = await debtControllerInstance.storage()
-
         } catch(e){
             console.dir(e, {depth: 5})
         }
@@ -122,11 +114,15 @@ describe('Interact: Deploy Debt Controller', async () => {
         try {
 
             // originate contract
-            superAdmin = await GeneralContract.originate(utils.tezos, "superAdmin", superAdminStorage);
+            superAdmin        = await GeneralContract.originate(utils.tezos, "superAdmin", superAdminStorage);
             superAdminAddress = superAdmin.contract.address
+            await saveContractAddress('superAdminAddress', superAdminAddress)
 
             // Set Lambdas
-            await setGeneralContractLambdas(tezos, "superAdmin", superAdmin.contract)
+            await setGeneralContractLambdas(tezos, "superAdmin", superAdmin.contract, false)
+
+            superAdminInstance              = await utils.tezos.contract.at(superAdminAddress)
+            superAdminInstanceStorage       = await superAdminInstance.storage()
 
         } catch (e) {
             console.log(e)
@@ -140,11 +136,15 @@ describe('Interact: Deploy Debt Controller', async () => {
             kycStorage.superAdmin = admin
 
             // originate contract
-            kyc = await GeneralContract.originate(utils.tezos, "kyc", kycStorage);
+            kyc        = await GeneralContract.originate(utils.tezos, "kyc", kycStorage);
             kycAddress = kyc.contract.address
-        
+            await saveContractAddress('kycAddress', kycAddress)
+
             // Set Lambdas
-            await setGeneralContractLambdas(tezos, "kyc", kyc.contract)
+            await setGeneralContractLambdas(tezos, "kyc", kyc.contract, false)
+
+            kycInstance              = await utils.tezos.contract.at(kycAddress)
+            kycInstanceStorage       = await kycInstance.storage()
 
         } catch (e) {
             console.log(e)
@@ -155,14 +155,20 @@ describe('Interact: Deploy Debt Controller', async () => {
         try {
 
             // set storage
-            debtControllerStorage.kycAddress = kycAddress
+            debtControllerStorage.feeWallet        = admin
+            debtControllerStorage.kycAddress       = kycAddress
+            debtControllerStorage.usdcTokenAddress = usdtTokenAddress
 
             // originate contract
-            debtController = await GeneralContract.originate(utils.tezos, "debtController", debtControllerStorage)
+            debtController        = await GeneralContract.originate(utils.tezos, "debtController", debtControllerStorage)
             debtControllerAddress = debtController.contract.address
+            await saveContractAddress('debtControllerAddress', debtControllerAddress)
         
             // Set Lambdas
-            await setGeneralContractLambdas(tezos, "debtController", debtController.contract)
+            await setGeneralContractLambdas(tezos, "debtController", debtController.contract, false)
+
+            debtControllerInstance              = await utils.tezos.contract.at(debtControllerAddress)
+            debtControllerInstanceStorage       = await kycInstance.storage()
 
         } catch (e) {
             console.log(e)
@@ -172,11 +178,11 @@ describe('Interact: Deploy Debt Controller', async () => {
     it('set general admin (bob)', async () => {
 
         // Set General Admin on Super Admin Contract to bob
-        const generalAdmin = await superAdminStorage.generalAdminLedger.get(admin);
+        const generalAdmin = await superAdminInstanceStorage.generalAdminLedger.get(admin);
 
         if(generalAdmin == null){
 
-            actionCounter       = superAdminStorage.actionCounter;
+            actionCounter       = superAdminInstanceStorage.actionCounter;
             superAdminOperation = await superAdminInstance.methods.setGeneralAdmin([admin]).send();
             await superAdminOperation.confirmation();
 
@@ -184,7 +190,7 @@ describe('Interact: Deploy Debt Controller', async () => {
             await superAdminOperation.confirmation();
 
             // update storage
-            superAdminStorage = await superAdminInstance.storage()
+            superAdminInstanceStorage = await superAdminInstance.storage()
         };
 
     })
@@ -192,11 +198,11 @@ describe('Interact: Deploy Debt Controller', async () => {
     it('set general admin (debtController)', async () => {
 
         // Set General Admin on Super Admin Contract to debtController
-        const generalAdmin = await superAdminStorage.generalAdminLedger.get(debtControllerAddress);
+        const generalAdmin = await superAdminInstanceStorage.generalAdminLedger.get(debtControllerAddress);
 
         if(generalAdmin == null){
 
-            actionCounter       = superAdminStorage.actionCounter;
+            actionCounter       = superAdminInstanceStorage.actionCounter;
             superAdminOperation = await superAdminInstance.methods.setGeneralAdmin([debtControllerAddress]).send();
             await superAdminOperation.confirmation();
 
@@ -204,7 +210,7 @@ describe('Interact: Deploy Debt Controller', async () => {
             await superAdminOperation.confirmation();
 
             // update storage
-            superAdminStorage = await superAdminInstance.storage()
+            superAdminInstanceStorage = await superAdminInstance.storage()
         };
 
     })
@@ -212,10 +218,10 @@ describe('Interact: Deploy Debt Controller', async () => {
     it('set superAdmin on debtController', async () => {
 
         // set super admin from bob to superAdmin address
-        const superAdmin = await debtControllerStorage.superAdmin;
+        const superAdmin = await debtControllerInstanceStorage.superAdmin;
         if(superAdmin !== superAdminAddress){
 
-            actionCounter = superAdminStorage.actionCounter;
+            actionCounter = superAdminInstanceStorage.actionCounter;
 
             const setSuperAdminOperation = await debtControllerInstance.methods.setSuperAdmin(superAdminAddress).send();
             await setSuperAdminOperation.confirmation();
@@ -227,8 +233,8 @@ describe('Interact: Deploy Debt Controller', async () => {
             await signOperation.confirmation();
 
             // set contract admin
-            superAdminStorage   = await superAdminInstance.storage()
-            actionCounter       = superAdminStorage.actionCounter;
+            superAdminInstanceStorage   = await superAdminInstance.storage()
+            actionCounter               = superAdminInstanceStorage.actionCounter;
 
             superAdminOperation = await superAdminInstance.methods.setContractAdmin(admin, [debtControllerAddress]).send();
             await superAdminOperation.confirmation();
@@ -237,8 +243,8 @@ describe('Interact: Deploy Debt Controller', async () => {
             await signOperation.confirmation();
 
             // update storage
-            superAdminStorage   = await superAdminInstance.storage()
-            const contractAdmin = await superAdminStorage.contractAdminLedger.get([admin, debtControllerAddress]);
+            superAdminInstanceStorage   = await superAdminInstance.storage()
+            const contractAdmin         = await superAdminInstanceStorage.contractAdminLedger.get([admin, debtControllerAddress]);
             assert.notEqual(contractAdmin, null);
         };
 
@@ -248,10 +254,10 @@ describe('Interact: Deploy Debt Controller', async () => {
     it('set superAdmin on kyc', async () => {
 
         // set super admin from bob to superAdmin address
-        const superAdmin = await kycStorage.superAdmin;
+        const superAdmin = await kycInstanceStorage.superAdmin;
         if(superAdmin !== superAdminAddress){
 
-            actionCounter = superAdminStorage.actionCounter;
+            actionCounter = superAdminInstanceStorage.actionCounter;
 
             const setSuperAdminOperation = await kycInstance.methods.setSuperAdmin(superAdminAddress).send();
             await setSuperAdminOperation.confirmation();
@@ -263,8 +269,8 @@ describe('Interact: Deploy Debt Controller', async () => {
             await signOperation.confirmation();
 
             // set contract admin
-            superAdminStorage   = await superAdminInstance.storage()
-            actionCounter       = superAdminStorage.actionCounter;
+            superAdminInstanceStorage   = await superAdminInstance.storage()
+            actionCounter               = superAdminInstanceStorage.actionCounter;
 
             superAdminOperation = await superAdminInstance.methods.setContractAdmin(admin, [kycAddress]).send();
             await superAdminOperation.confirmation();
@@ -273,8 +279,8 @@ describe('Interact: Deploy Debt Controller', async () => {
             await signOperation.confirmation();
 
             // update storage
-            superAdminStorage   = await superAdminInstance.storage()
-            const contractAdmin = await superAdminStorage.contractAdminLedger.get([admin, kycAddress]);
+            superAdminInstanceStorage   = await superAdminInstance.storage()
+            const contractAdmin         = await superAdminInstanceStorage.contractAdminLedger.get([admin, kycAddress]);
             assert.notEqual(contractAdmin, null);
         };
 

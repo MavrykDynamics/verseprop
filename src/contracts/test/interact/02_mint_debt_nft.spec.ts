@@ -1,4 +1,4 @@
-import { Utils } from "../helpers/Utils.js"
+import { Utils } from "../helpers/Utils"
 
 const chai = require('chai')
 const chaiAsPromised = require('chai-as-promised')
@@ -20,7 +20,7 @@ import { bob, eve, alice, mallory } from '../../scripts/sandbox/accounts.js'
 import { 
     signerFactory,
     updateOperators
-} from '../helpers/helperFunctions.js'
+} from '../helpers/helperFunctions'
 
 // ------------------------------------------------------------------------------
 // Contract Storage
@@ -97,20 +97,6 @@ describe('Interact: Mint Debt NFT', async () => {
             }
 
             //----------------------------
-            // Input Params for interaction: 
-            //
-            //   1) Debt NFT KT1 address (from debt created)
-            //   2) Receipient mv1 address
-            //   3) Token URI string
-            //----------------------------
-
-            debtNFTAddress  = ""
-            debtNFTInstance = await utils.tezos.contract.at(debtNFTAddress)
-
-            recipient       = ""
-            tokenURI        = ""
-
-            //----------------------------
             // Set signer to admin
             //----------------------------
 
@@ -119,6 +105,20 @@ describe('Interact: Mint Debt NFT', async () => {
             tezos = utils.tezos
 
             await signerFactory(tezos, adminSk);
+
+            //----------------------------
+            // Input Params for interaction: 
+            //
+            //   1) Debt NFT KT1 address (from debt created)
+            //   2) Receipient mv1 address
+            //   3) Token URI string
+            //----------------------------
+
+            debtNFTAddress  = "KT1N7JRJoEAXmP4AygJtNEaArCkfyAqxRuRa"
+            debtNFTInstance = await utils.tezos.contract.at(debtNFTAddress)
+
+            recipient       = admin
+            tokenURI        = "https://verseprop-byd6bdg5exfnayd3.z02.azurefd.net/static/raven.png"
 
             //----------------------------
             // Setup contracts
