@@ -33,7 +33,7 @@ block {
         |   LambdaClaimSuperAdmin(_params) -> {
                 
                 // get sender and new super admin address 
-                const sender : address = Tezos.get_sender();
+                const sender : address = Mavryk.get_sender();
                 const newSuperAdmin : address = case s.newSuperAdmin of [
                         Some(_address) -> _address
                     |   None           -> failwith(error_NO_NEW_SUPER_ADMIN_FOUND)
@@ -309,7 +309,7 @@ block {
                             name                    = kycRegistrarName;
                             kycAdmins               = kycAdminAddresses;
                             membersVerified         = 0n;
-                            createdAt               = Tezos.get_now();
+                            createdAt               = Mavryk.get_now();
 
                             setMemberIsPaused       = False;
                             freezeMemberIsPaused    = False;
@@ -513,7 +513,7 @@ block {
                 case setMemberParams of [
                         AddMember(addMemberList) -> {
 
-                            const sender : address = Tezos.get_sender();
+                            const sender : address = Mavryk.get_sender();
 
                             for newMember in list addMemberList {
 
@@ -531,7 +531,7 @@ block {
                                             region       = newMember.region;
                                             investorType = newMember.investorType;
 
-                                            expireAt     = Tezos.get_now() + secondsInYear;
+                                            expireAt     = Mavryk.get_now() + secondsInYear;
                                             frozen       = False;
 
                                             kycRegistrar = sender; 
@@ -616,7 +616,7 @@ block {
     case kycLambdaAction of [
         |   LambdaSetRegistrarAdmin(setRegistrarAdminListParams) -> {
 
-                const sender : address = Tezos.get_sender();
+                const sender : address = Mavryk.get_sender();
 
                 for setRegistrarAdminParams in list setRegistrarAdminListParams {
 
@@ -633,7 +633,7 @@ block {
                     const senderIsMemberKycRegistrar : bool = if sender = kycRegistrarAddress then True else False;
 
                     // check if sender is contract admin
-                    const verifyUserIsContractAdminView : option (bool) = Tezos.call_view("verifyUserIsContractAdmin", (sender, Tezos.get_self_address()), s.superAdmin);
+                    const verifyUserIsContractAdminView : option (bool) = Mavryk.call_view("verifyUserIsContractAdmin", (sender, Mavryk.get_self_address()), s.superAdmin);
                     const userIsContractAdmin : bool = case verifyUserIsContractAdminView of [
                             Some (_bool) -> _bool
                         |   None         -> False
@@ -672,7 +672,7 @@ block {
     case kycLambdaAction of [
         |   LambdaFreezeMember(memberList) -> {
 
-                const sender : address = Tezos.get_sender();
+                const sender : address = Mavryk.get_sender();
 
                 for member in list memberList {
 
@@ -684,7 +684,7 @@ block {
                     const senderIsMemberKycRegistrar : bool = if sender = memberRecord.kycRegistrar then True else False;
 
                     // check if sender is contract admin
-                    const verifyUserIsContractAdminView : option (bool) = Tezos.call_view("verifyUserIsContractAdmin", (sender, Tezos.get_self_address()), s.superAdmin);
+                    const verifyUserIsContractAdminView : option (bool) = Mavryk.call_view("verifyUserIsContractAdmin", (sender, Mavryk.get_self_address()), s.superAdmin);
                     const userIsContractAdmin : bool = case verifyUserIsContractAdminView of [
                             Some (_bool) -> _bool
                         |   None         -> False
@@ -712,7 +712,7 @@ block {
     case kycLambdaAction of [
         |   LambdaUnfreezeMember(memberList) -> {
 
-                const sender : address = Tezos.get_sender();
+                const sender : address = Mavryk.get_sender();
 
                 for member in list memberList {
 
@@ -724,7 +724,7 @@ block {
                     const senderIsMemberKycRegistrar : bool = if sender = memberRecord.kycRegistrar then True else False;
 
                     // check if sender is contract admin
-                    const verifyUserIsContractAdminView : option (bool) = Tezos.call_view("verifyUserIsContractAdmin", (sender, Tezos.get_self_address()), s.superAdmin);
+                    const verifyUserIsContractAdminView : option (bool) = Mavryk.call_view("verifyUserIsContractAdmin", (sender, Mavryk.get_self_address()), s.superAdmin);
                     const userIsContractAdmin : bool = case verifyUserIsContractAdminView of [
                             Some (_bool) -> _bool
                         |   None         -> False

@@ -11,7 +11,7 @@
 function verifySenderIsSuperAdmin(const s : kycStorageType) : unit is 
 block {
 
-    const sender : address = Tezos.get_sender();
+    const sender : address = Mavryk.get_sender();
     if sender = s.superAdmin then skip else failwith(error_ONLY_SUPER_ADMINISTRATOR_ALLOWED);
 
 } with unit
@@ -21,10 +21,10 @@ block {
 function verifySenderIsAdmin(const s : kycStorageType) : unit is 
 block {
 
-    const sender : address = Tezos.get_sender();
+    const sender : address = Mavryk.get_sender();
 
     // check if contract admin
-    const verifyUserIsContractAdminView : option (bool) = Tezos.call_view("verifyUserIsContractAdmin", (sender, Tezos.get_self_address()), s.superAdmin);
+    const verifyUserIsContractAdminView : option (bool) = Mavryk.call_view("verifyUserIsContractAdmin", (sender, Mavryk.get_self_address()), s.superAdmin);
     const userIsContractAdmin : bool = case verifyUserIsContractAdminView of [
             Some (_bool) -> _bool
         |   None         -> failwith("error_VIEW_VERIFY_USER_IS_CONTRACT_ADMIN_NOT_FOUND")
@@ -40,7 +40,7 @@ block {
 function verifySenderIsKycRegistrar(const s : kycStorageType) : unit is 
 block {
 
-    const sender : address = Tezos.get_sender();
+    const sender : address = Mavryk.get_sender();
 
     // check if sender is kyc registrar
     case s.kycRegistrarLedger[sender] of [
@@ -55,7 +55,7 @@ block {
 function verifySenderIsAdminOrKycRegistrar(const s : kycStorageType) : unit is 
 block {
 
-    const sender : address = Tezos.get_sender();
+    const sender : address = Mavryk.get_sender();
 
     const senderIsKycRegistrar : bool = case s.kycRegistrarLedger[sender] of [
             Some(_exist) -> True
@@ -63,7 +63,7 @@ block {
     ];
 
     // check if sender is contract admin
-    const verifyUserIsContractAdminView : option (bool) = Tezos.call_view("verifyUserIsContractAdmin", (sender, Tezos.get_self_address()), s.superAdmin);
+    const verifyUserIsContractAdminView : option (bool) = Mavryk.call_view("verifyUserIsContractAdmin", (sender, Mavryk.get_self_address()), s.superAdmin);
     const userIsContractAdmin : bool = case verifyUserIsContractAdminView of [
             Some (_bool) -> True
         |   None         -> False

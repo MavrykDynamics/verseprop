@@ -10,7 +10,7 @@
 
 // helper function to get mint entrypoint
 function getMintEntrypoint(const tokenAddress : address) : contract(list(mintType)) is
-    case (Tezos.get_entrypoint_opt(
+    case (Mavryk.get_entrypoint_opt(
         "%mint",
         tokenAddress) : option(contract(list(mintType)))) of [
                 Some(contr) -> contr
@@ -20,7 +20,7 @@ function getMintEntrypoint(const tokenAddress : address) : contract(list(mintTyp
 
 // helper function to get burn entrypoint
 function getBurnEntrypoint(const tokenAddress : address) : contract(list(burnType)) is
-    case (Tezos.get_entrypoint_opt(
+    case (Mavryk.get_entrypoint_opt(
         "%burn",
         tokenAddress) : option(contract(list(burnType)))) of [
                 Some(contr) -> contr
@@ -40,7 +40,7 @@ function getBurnEntrypoint(const tokenAddress : address) : contract(list(burnTyp
 function getBalanceOf(const user : address; const tokenContractAddress : address) : nat is 
 block {
 
-    const getBalanceView : option(nat) = Tezos.call_view("get_balance", (user, 0n), tokenContractAddress);
+    const getBalanceView : option(nat) = Mavryk.call_view("get_balance", (user, 0n), tokenContractAddress);
     const balance : nat = case getBalanceView of [
             Some(_nat) -> _nat
         |   None       -> 0n
@@ -53,7 +53,7 @@ block {
 function ownerOf(const tokenId : nat; const tokenContractAddress : address) : address is 
 block {
 
-    const ownerOfView : option(option(address)) = Tezos.call_view("owner_of", tokenId, tokenContractAddress);
+    const ownerOfView : option(option(address)) = Mavryk.call_view("owner_of", tokenId, tokenContractAddress);
     const owner : address = case ownerOfView of [
             Some(_addressView) -> case _addressView of [
                     Some(_address) -> _address
@@ -69,7 +69,7 @@ block {
 function getNextTokenId(const tokenContractAddress : address) : int is 
 block {
 
-    const nextTokenView : option(nat) = Tezos.call_view("next_token_id", unit, tokenContractAddress);
+    const nextTokenView : option(nat) = Mavryk.call_view("next_token_id", unit, tokenContractAddress);
     const nextTokenIdNat : nat = case nextTokenView of [
             Some(_nat) -> _nat
         |   None       -> 0n
@@ -84,7 +84,7 @@ function getTotalSupply(const tokenIdInt : int; const tokenContractAddress : add
 block {
 
     const tokenId : nat = abs(tokenIdInt);
-    const getTotalSupplyView : option(nat) = Tezos.call_view("total_supply", tokenId, tokenContractAddress);
+    const getTotalSupplyView : option(nat) = Mavryk.call_view("total_supply", tokenId, tokenContractAddress);
     const totalSupply : nat = case getTotalSupplyView of [
             Some(_nat) -> _nat
         |   None       -> 0n
@@ -102,9 +102,9 @@ block {
         address         = user;
     ];
 
-    const mintOperation : operation = Tezos.transaction(
+    const mintOperation : operation = Mavryk.transaction(
         list[mintParams],
-        0tez,
+        0mav,
         getMintEntrypoint(tokenContractAddress)
     );
 
@@ -120,9 +120,9 @@ block {
         address    = user;
     ];
 
-    const burnOperation : operation = Tezos.transaction(
+    const burnOperation : operation = Mavryk.transaction(
         list[burnParams],
-        0tez,
+        0mav,
         getBurnEntrypoint(tokenContractAddress)
     );
 

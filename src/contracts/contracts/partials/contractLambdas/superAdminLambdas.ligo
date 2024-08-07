@@ -588,12 +588,12 @@ block {
                     var signatoryActionRecord : signatoryActionRecordType := getSignatoryActionRecord(actionId, s);
 
                     // check if signatory has already signed for this action
-                    if Big_map.mem((Tezos.get_sender(), actionId), s.signatureLedger) then failwith(error_SIGNATORY_ACTION_ALREADY_SIGNED_BY_SENDER) else skip;
+                    if Big_map.mem((Mavryk.get_sender(), actionId), s.signatureLedger) then failwith(error_SIGNATORY_ACTION_ALREADY_SIGNED_BY_SENDER) else skip;
 
                     // update signers and signersCount for signatory action record
                     var signersCount : nat               := signatoryActionRecord.signersCount + 1n;
                     signatoryActionRecord.signersCount   := signersCount;
-                    s.signatureLedger                    := Big_map.add((Tezos.get_sender(), actionId), unit, s.signatureLedger);
+                    s.signatureLedger                    := Big_map.add((Mavryk.get_sender(), actionId), unit, s.signatureLedger);
                     s.signatoryActionLedger[actionId]    := signatoryActionRecord;
 
                     // check if threshold has been reached

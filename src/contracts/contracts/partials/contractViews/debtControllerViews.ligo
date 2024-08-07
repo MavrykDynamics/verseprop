@@ -38,7 +38,7 @@ block {
     // Check if the debt is settled
     if debtRecord.settledDate = 0n then {
         // If not settled, use current time to calculate time passed
-        timePassed := abs(Tezos.get_level() - debtRecord.startDate);
+        timePassed := abs(Mavryk.get_level() - debtRecord.startDate);
     } else {
         // If settled, use settledDate to calculate time passed
         timePassed := abs(debtRecord.settledDate - debtRecord.startDate);

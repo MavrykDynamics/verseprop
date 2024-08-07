@@ -1,4 +1,4 @@
-import { MichelsonMap } from "@taquito/michelson-encoder"
+import { MichelsonMap } from "@mavrykdynamics/taquito-michelson-encoder"
 import { BigNumber } from "bignumber.js"
 import { bob, alice, eve, david } from '../scripts/sandbox/accounts'
 import { superAdminStorageType } from "./storageTypes/superAdminStorageType"

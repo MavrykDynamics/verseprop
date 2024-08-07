@@ -12,7 +12,7 @@
 function verifySenderIsSignatory(var s : superAdminStorageType) : unit is
 block {
 
-    if Big_map.mem(Tezos.get_sender(), s.signatoryLedger) then skip
+    if Big_map.mem(Mavryk.get_sender(), s.signatoryLedger) then skip
     else failwith(error_ONLY_SIGNATORIES_ALLOWED);
 
 } with unit
@@ -22,7 +22,7 @@ block {
 function verifySenderIsGeneralAdmin(var s : superAdminStorageType) : unit is
 block {
 
-    if Big_map.mem(Tezos.get_sender(), s.generalAdminLedger) then skip
+    if Big_map.mem(Mavryk.get_sender(), s.generalAdminLedger) then skip
     else failwith(error_ONLY_GENERAL_ADMIN_ALLOWED);
 
 } with unit
@@ -32,7 +32,7 @@ block {
 function verifySenderIsContractAdmin(var s : superAdminStorageType) : unit is
 block {
 
-    if Big_map.mem((Tezos.get_sender(), Tezos.get_self_address()), s.contractAdminLedger) then skip
+    if Big_map.mem((Mavryk.get_sender(), Mavryk.get_self_address()), s.contractAdminLedger) then skip
     else failwith(error_ONLY_CONTRACT_ADMIN_ALLOWED);
 
 } with unit
@@ -42,7 +42,7 @@ block {
 function verifySenderIsSelf(const _p : unit) : unit is
 block {
 
-    if Tezos.get_sender() = Tezos.get_self_address() then skip
+    if Mavryk.get_sender() = Mavryk.get_self_address() then skip
     else failwith(error_ONLY_SELF_ADDRESS_ALLOWED);
 
 } with unit
@@ -60,7 +60,7 @@ block {
 
 // helper function to %setSuperAdmin entrypoint on specified contract
 function sendSetSuperAdminParams(const contractAddress : address) : contract(address) is
-    case (Tezos.get_entrypoint_opt(
+    case (Mavryk.get_entrypoint_opt(
         "%setSuperAdmin",
         contractAddress) : option(contract(address))) of [
                 Some(contr) -> contr
@@ -71,7 +71,7 @@ function sendSetSuperAdminParams(const contractAddress : address) : contract(add
 
 // helper function to %claimSuperAdmin entrypoint on specified contract
 function sendClaimSuperAdminParams(const contractAddress : address) : contract(unit) is
-    case (Tezos.get_entrypoint_opt(
+    case (Mavryk.get_entrypoint_opt(
         "%claimSuperAdmin",
         contractAddress) : option(contract(unit))) of [
                 Some(contr) -> contr
@@ -81,7 +81,7 @@ function sendClaimSuperAdminParams(const contractAddress : address) : contract(u
 
 // helper function to %setTokenKyc entrypoint on specified contract
 function sendSetTokenKycParams(const contractAddress : address) : contract(address) is
-    case (Tezos.get_entrypoint_opt(
+    case (Mavryk.get_entrypoint_opt(
         "%setTokenKyc",
         contractAddress) : option(contract(address))) of [
                 Some(contr) -> contr
@@ -91,7 +91,7 @@ function sendSetTokenKycParams(const contractAddress : address) : contract(addre
 
 // helper function to %killToken entrypoint on specified contract
 function sendKillTokenParams(const contractAddress : address) : contract(unit) is
-    case (Tezos.get_entrypoint_opt(
+    case (Mavryk.get_entrypoint_opt(
         "%kill",
         contractAddress) : option(contract(unit))) of [
                 Some(contr) -> contr
@@ -102,7 +102,7 @@ function sendKillTokenParams(const contractAddress : address) : contract(unit) i
 
 // helper function to %transfer entrypoint on specified contract
 function sendTransferParams(const contractAddress : address) : contract(transferActionType) is
-    case (Tezos.get_entrypoint_opt(
+    case (Mavryk.get_entrypoint_opt(
         "%transfer",
         contractAddress) : option(contract(transferActionType))) of [
                 Some(contr) -> contr
@@ -143,7 +143,7 @@ block {
     if actionRecord.executed then failwith(error_SIGNATORY_ACTION_EXECUTED) else skip;
 
     // check that signatory action has not expired
-    if Tezos.get_now() > actionRecord.expirationDateTime then failwith(error_SIGNATORY_ACTION_EXPIRED) else skip;
+    if Mavryk.get_now() > actionRecord.expirationDateTime then failwith(error_SIGNATORY_ACTION_EXPIRED) else skip;
 
 } with (unit)
 
@@ -162,7 +162,7 @@ block {
     if actionRecord.executed then failwith(error_SIGNATORY_ACTION_EXECUTED) else skip;
 
     // check that signatory action has not expired
-    if Tezos.get_now() > actionRecord.expirationDateTime then failwith(error_SIGNATORY_ACTION_EXPIRED) else skip;
+    if Mavryk.get_now() > actionRecord.expirationDateTime then failwith(error_SIGNATORY_ACTION_EXPIRED) else skip;
 
 } with (unit)
 
@@ -173,7 +173,7 @@ function createSignatoryAction(const actionType : string; const dataMap : dataMa
 block {
 
     const signatoryActionRecord : signatoryActionRecordType = record[
-        initiator             = Tezos.get_sender();
+        initiator             = Mavryk.get_sender();
         actionType            = actionType;
         executed              = False;
 
@@ -182,11 +182,11 @@ block {
         
         dataMap               = dataMap;
 
-        startDateTime         = Tezos.get_now();
-        startLevel            = Tezos.get_level();             
+        startDateTime         = Mavryk.get_now();
+        startLevel            = Mavryk.get_level();             
         executedDateTime      = None;
         executedLevel         = None;
-        expirationDateTime    = Tezos.get_now() + int(s.config.actionExpiryInSeconds);
+        expirationDateTime    = Mavryk.get_now() + int(s.config.actionExpiryInSeconds);
     ];
     
     s.signatoryActionLedger[s.actionCounter] := signatoryActionRecord;
@@ -361,9 +361,9 @@ block {
 function setSuperAdminOperation(const superAdminAddress : address; const contractAddress : address) : operation is 
 block {
 
-    const setSuperAdminOperation : operation = Tezos.transaction(
+    const setSuperAdminOperation : operation = Mavryk.transaction(
         superAdminAddress,
-        0tez, 
+        0mav, 
         sendSetSuperAdminParams(contractAddress)
     );
 
@@ -375,9 +375,9 @@ block {
 function claimSuperAdminOperation(const contractAddress : address) : operation is 
 block {
 
-    const claimSuperAdminOperation : operation = Tezos.transaction(
+    const claimSuperAdminOperation : operation = Mavryk.transaction(
         unit,
-        0tez, 
+        0mav, 
         sendClaimSuperAdminParams(contractAddress)
     );
 
@@ -389,9 +389,9 @@ block {
 function setTokenKycOperation(const kycAddress : address; const contractAddress : address) : operation is 
 block {
 
-    const setTokenKycOperation : operation = Tezos.transaction(
+    const setTokenKycOperation : operation = Mavryk.transaction(
         (kycAddress),
-        0tez, 
+        0mav, 
         sendSetTokenKycParams(contractAddress)
     );
 
@@ -403,9 +403,9 @@ block {
 function killTokenOperation(const tokenAddress : address) : operation is 
 block {
 
-    const killTokenOperation : operation = Tezos.transaction(
+    const killTokenOperation : operation = Mavryk.transaction(
         unit,
-        0tez, 
+        0mav, 
         sendKillTokenParams(tokenAddress)
     );
 
@@ -425,9 +425,9 @@ block {
 
     const transferActionParams : transferActionType = list[transferDestinationRecord];
 
-    const transferOperation : operation = Tezos.transaction(
+    const transferOperation : operation = Mavryk.transaction(
         transferActionParams,
-        0tez, 
+        0mav, 
         sendTransferParams(contractAddress)
     );
 
@@ -959,8 +959,8 @@ block {
     // update signatory action record status
     actionRecord.status              := "EXECUTED";
     actionRecord.executed            := True;
-    actionRecord.executedDateTime    := Some(Tezos.get_now());
-    actionRecord.executedLevel       := Some(Tezos.get_level());
+    actionRecord.executedDateTime    := Some(Mavryk.get_now());
+    actionRecord.executedLevel       := Some(Mavryk.get_level());
     
     // save signatory action record
     s.signatoryActionLedger[actionId] := actionRecord;

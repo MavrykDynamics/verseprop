@@ -62,7 +62,7 @@ const noOperations : list (operation) = nil;
 function verifySenderIsSuperAdmin(const s : rwaTokenStorageType) : unit is 
 block {
 
-    const sender : address = Tezos.get_sender();
+    const sender : address = Mavryk.get_sender();
     if sender = s.superAdmin then skip else failwith(error_NOT_SUPER_ADMIN);
 
 } with unit
@@ -72,17 +72,17 @@ block {
 function verifySenderIsAdmin(const s : rwaTokenStorageType) : unit is 
 block {
 
-    const sender : address = Tezos.get_sender();
+    const sender : address = Mavryk.get_sender();
 
     // check if general admin
-    const verifyUserIsGeneralAdminView : option (bool) = Tezos.call_view("verifyUserIsGeneralAdmin", sender, s.superAdmin);
+    const verifyUserIsGeneralAdminView : option (bool) = Mavryk.call_view("verifyUserIsGeneralAdmin", sender, s.superAdmin);
     const userIsGeneralAdmin : bool = case verifyUserIsGeneralAdminView of [
             Some (_bool) -> _bool
         |   None         -> failwith("error_VIEW_VERIFY_USER_IS_GENERAL_ADMIN_NOT_FOUND")
     ];
 
     // check if contract admin
-    const verifyUserIsContractAdminView : option (bool) = Tezos.call_view("verifyUserIsContractAdmin", (sender, Tezos.get_self_address()), s.superAdmin);
+    const verifyUserIsContractAdminView : option (bool) = Mavryk.call_view("verifyUserIsContractAdmin", (sender, Mavryk.get_self_address()), s.superAdmin);
     const userIsContractAdmin : bool = case verifyUserIsContractAdminView of [
             Some (_bool) -> _bool
         |   None         -> failwith("error_VIEW_VERIFY_USER_IS_CONTRACT_ADMIN_NOT_FOUND")
@@ -135,7 +135,7 @@ block {
 
     // take new snapshot
     const snapshotKey : (nat * address * nat)       = (tokenId, user, userTokenChunk);
-    const snapshotValue : (nat * timestamp)         = (userTokenBalance, Tezos.get_now());
+    const snapshotValue : (nat * timestamp)         = (userTokenBalance, Mavryk.get_now());
     var snapshotChunkMap : snapshotMapChunkType    := case s.snapshotLedger[snapshotKey] of [
             Some(_map) -> _map
         |   None       -> (map[] : snapshotMapChunkType)
@@ -157,13 +157,13 @@ block {
 // ------------------------------------------------------------------------------
 
 function verifyIsOwner(const owner : ownerType) : unit is
-    if Tezos.get_sender() =/= owner then failwith("FA2_NOT_OWNER")
+    if Mavryk.get_sender() =/= owner then failwith("FA2_NOT_OWNER")
     else unit
 
 
 
 function verifySenderIsOwnerOrOperator(const owner : ownerType; const token_id : tokenIdType; const operators : operatorsType) : unit is
-    if owner = Tezos.get_sender() or Big_map.mem((owner, Tezos.get_sender(), token_id), operators) then unit
+    if owner = Mavryk.get_sender() or Big_map.mem((owner, Mavryk.get_sender(), token_id), operators) then unit
     else failwith ("FA2_NOT_OPERATOR")
 
 
@@ -260,13 +260,26 @@ block{
 
 
 
-
 (* next_token_id
     - Get the next token id
 *)
 [@view] function next_token_id(const _ : unit; var s : rwaTokenStorageType) : nat is
     s.nextTokenId
 
+
+
+(* check if operator *)
+[@view] function is_operator(const operator : (ownerType * operatorType * nat); const store : rwaTokenStorageType) : bool is
+    Big_map.mem(operator, store.operators)
+
+
+
+(* get: metadata *)
+[@view] function token_metadata(const tokenId : nat; const store : rwaTokenStorageType) : option(tokenMetadataType) is
+    case Big_map.find_opt(tokenId, store.token_metadata) of [
+            Some (_metadata)  -> Some(_metadata)
+        |   None              -> (None : option(tokenMetadataType))
+    ]
 
 
 (* getUserBalanceAtTimestamp
@@ -464,7 +477,7 @@ function claimSuperAdmin(var s : rwaTokenStorageType) : return is
 block {
 
     // get sender and new super admin address 
-    const sender : address = Tezos.get_sender();
+    const sender : address = Mavryk.get_sender();
     const newSuperAdmin : address = case s.newSuperAdmin of [
             Some(_address) -> _address
         |   None           -> failwith(error_NO_NEW_SUPER_ADMIN_FOUND)
@@ -734,7 +747,7 @@ block{
                     amount      = amount;
                 ];
 
-                const isTransferValidView : option (bool) = Tezos.call_view("view_is_transfer_valid", validationTransfer, accumulator.kycAddress);
+                const isTransferValidView : option (bool) = Mavryk.call_view("view_is_transfer_valid", validationTransfer, accumulator.kycAddress);
                 const _isTransferValid : bool = case isTransferValidView of [
                         Some (_bool) -> if _bool = False then failwith("error_CANNOT_TRANSFER") else True
                     |   None         -> failwith("error_VIEW_IS_TRANSFER_VALID_NOT_FOUND")
@@ -852,7 +865,7 @@ block{
       const requests   : list(balanceOfRequestType) = balance_of_requests.requests;
       const callback   : contract(list(balanceOfResponse)) = balance_of_requests.callback;
       const responses  : list(balanceOfResponse) = List.map(retrieveBalance, requests);
-      const operation  : operation = Tezos.transaction(responses, 0tez, callback);
+      const operation  : operation = Mavryk.transaction(responses, 0mav, callback);
 
 } with (list[operation],s)
 

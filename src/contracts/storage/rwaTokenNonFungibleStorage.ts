@@ -1,4 +1,4 @@
-import { MichelsonMap } from "@taquito/michelson-encoder"
+import { MichelsonMap } from "@mavrykdynamics/taquito-michelson-encoder"
 import { rwaTokenNonFungibleStorageType } from "./storageTypes/rwaTokenNonFungibleStorageType"
 import { bob, eve, oscar } from '../scripts/sandbox/accounts'
 import { zeroAddress } from "test/helpers/Utils";

@@ -40,7 +40,7 @@ block {
         |   LambdaClaimSuperAdmin(_params) -> {
 
                 // get sender and new superAdmin address 
-                const sender : address = Tezos.get_sender();
+                const sender : address = Mavryk.get_sender();
                 const newSuperAdmin : address = case s.newSuperAdmin of [
                         Some(_address) -> _address
                     |   None           -> failwith(error_NO_NEW_SUPER_ADMIN_FOUND)
@@ -366,7 +366,7 @@ block {
                 // Create operation to originate RWA Token
                 const rwaTokenOrigination : (operation * address) = createRwaTokenFunc(
                     (None: option(key_hash)), 
-                    0tez,
+                    0mav,
                     originatedRwaTokenStorage
                 );
 
@@ -432,23 +432,23 @@ block {
                 if debt.currency = "mav" then {
 
                     // can omit this transfer operation as debt storage is equivalent to debt logic contract here
-                    // operations := transferTez((Tezos.get_contract_with_error(Tezos.get_self_address(), "Error. Tez could not be sent to debt controller address.") : contract(unit)), versepropFee * 1mutez) # operations;
+                    // operations := transferTez((Mavryk.get_contract_with_error(Mavryk.get_self_address(), "Error. Tez could not be sent to debt controller address.") : contract(unit)), versepropFee * 1mumav) # operations;
 
                     const loanAmount : nat = abs(debt.totalInvestment - versepropFee);
-                    operations := transferTez((Tezos.get_contract_with_error(debt.walletAddress, "Error. Tez could not be sent to wallet address.") : contract(unit)), loanAmount * 1mutez) # operations;
+                    operations := transferTez((Mavryk.get_contract_with_error(debt.walletAddress, "Error. Tez could not be sent to wallet address.") : contract(unit)), loanAmount * 1mumav) # operations;
 
                 } else if debt.currency = "usdc" then {
 
                     // can omit this transfer operation as debt storage is equivalent to debt logic contract here
-                    // operations := transferFa2Token(Tezos.get_self_address(), Tezos.get_self_address(), versepropFee, 0n, s.usdcTokenAddress) # operations;
+                    // operations := transferFa2Token(Mavryk.get_self_address(), Mavryk.get_self_address(), versepropFee, 0n, s.usdcTokenAddress) # operations;
 
                     const loanAmount : nat = abs(debt.totalInvestment - versepropFee);
-                    operations := transferFa2Token(Tezos.get_self_address(), debt.walletAddress, loanAmount, 0n, s.usdcTokenAddress) # operations;
+                    operations := transferFa2Token(Mavryk.get_self_address(), debt.walletAddress, loanAmount, 0n, s.usdcTokenAddress) # operations;
 
                 };
 
                 // Update status and startDate (to be used for interest calculation)
-                debt.startDate         := Tezos.get_level();
+                debt.startDate         := Mavryk.get_level();
                 debt.status            := FUNDED;
                 s.debtLedger[_debtId]  := debt;
                 
@@ -511,9 +511,9 @@ block {
                             
                             // Refund logic
                             if debt.currency = "mav" then {
-                                operations := transferTez((Tezos.get_contract_with_error(owner, "Error. Tez could not be sent to wallet address.") : contract(unit)), investmentAmount * 1mutez) # operations;
+                                operations := transferTez((Mavryk.get_contract_with_error(owner, "Error. Tez could not be sent to wallet address.") : contract(unit)), investmentAmount * 1mumav) # operations;
                             } else if debt.currency = "usdc" then {
-                                operations := transferFa2Token(Tezos.get_self_address(), owner, investmentAmount, 0n, s.usdcTokenAddress) # operations;
+                                operations := transferFa2Token(Mavryk.get_self_address(), owner, investmentAmount, 0n, s.usdcTokenAddress) # operations;
                             };
 
                             operations := _burnDebtNFTOperation(owner, abs(i), nftContract) # operations; // Burn the NFT
@@ -565,15 +565,15 @@ block {
 
                 if debt.currency = "mav" then {
 
-                    if (Tezos.get_amount() / 1mutez) = _amt then skip else failwith("Incorrect MAV amount");
+                    if (Mavryk.get_amount() / 1mumav) = _amt then skip else failwith("Incorrect MAV amount");
                     if _amt >= debt.minInvestmentAmount then skip else failwith("Minimum investment amount not sufficient");
 
-                    operations := transferTez((Tezos.get_contract_with_error(Tezos.get_self_address(), "Error. Tez could not be sent to address.") : contract(unit)), Tezos.get_amount()) # operations;
+                    operations := transferTez((Mavryk.get_contract_with_error(Mavryk.get_self_address(), "Error. Tez could not be sent to address.") : contract(unit)), Mavryk.get_amount()) # operations;
 
                 } else if debt.currency = "usdc" then {
 
                     if _amt >= debt.minInvestmentAmount then skip else failwith("Minimum investment amount not sufficient");
-                    operations := transferFa2Token(Tezos.get_self_address(), _user, _amt, 0n, s.usdcTokenAddress) # operations;
+                    operations := transferFa2Token(Mavryk.get_self_address(), _user, _amt, 0n, s.usdcTokenAddress) # operations;
 
                 };
 
@@ -643,12 +643,12 @@ block {
                 operations := _burnDebtNFTOperation(_user, _tokenId, nftContract) # operations;
 
                 if debt.currency = "mav" then {
-                    if (Tezos.get_balance() / 1mutez) >= totalWithdrawal then skip else failwith("Insufficient contract balance");
-                    operations := transferTez((Tezos.get_contract_with_error(_user, "Error. Tez could not be sent to address.") : contract(unit)), totalWithdrawal * 1mutez) # operations;
+                    if (Mavryk.get_balance() / 1mumav) >= totalWithdrawal then skip else failwith("Insufficient contract balance");
+                    operations := transferTez((Mavryk.get_contract_with_error(_user, "Error. Tez could not be sent to address.") : contract(unit)), totalWithdrawal * 1mumav) # operations;
                 } else if debt.currency = "usdc" then {
-                    const balanceOfContract : nat = getBalanceOf(Tezos.get_self_address(), s.usdcTokenAddress);
+                    const balanceOfContract : nat = getBalanceOf(Mavryk.get_self_address(), s.usdcTokenAddress);
                     if balanceOfContract >= totalWithdrawal then skip else failwith("Insufficient contract balance");
-                    operations := transferFa2Token(Tezos.get_self_address(), _user, totalWithdrawal, 0n, s.usdcTokenAddress) # operations;
+                    operations := transferFa2Token(Mavryk.get_self_address(), _user, totalWithdrawal, 0n, s.usdcTokenAddress) # operations;
                 };
 
                 debt.totalInvestment  := abs(debt.totalInvestment - investmentAmount);
@@ -690,14 +690,14 @@ block {
                 const totalPayment : nat = debt.maxAmount + interest;
 
                 if debt.currency = "mav" then {
-                    if (Tezos.get_amount() / 1mutez) >= totalPayment then skip else failwith("Insufficient payment");
-                    operations := transferTez((Tezos.get_contract_with_error(Tezos.get_self_address(), "Error. Tez could not be sent to address.") : contract(unit)), Tezos.get_amount()) # operations;
+                    if (Mavryk.get_amount() / 1mumav) >= totalPayment then skip else failwith("Insufficient payment");
+                    operations := transferTez((Mavryk.get_contract_with_error(Mavryk.get_self_address(), "Error. Tez could not be sent to address.") : contract(unit)), Mavryk.get_amount()) # operations;
                 } else if debt.currency = "usdc" then {
-                    operations := transferFa2Token(_user, Tezos.get_self_address(), totalPayment, 0n, s.usdcTokenAddress) # operations;
+                    operations := transferFa2Token(_user, Mavryk.get_self_address(), totalPayment, 0n, s.usdcTokenAddress) # operations;
                 };
 
                 debt.status           := SETTLED;
-                debt.settledDate      := Tezos.get_level();
+                debt.settledDate      := Mavryk.get_level();
                 s.debtLedger[_debtId] := debt;
 
             }

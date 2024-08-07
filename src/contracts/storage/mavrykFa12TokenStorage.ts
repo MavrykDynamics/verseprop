@@ -1,4 +1,4 @@
-import { MichelsonMap } from "@taquito/michelson-encoder"
+import { MichelsonMap } from "@mavrykdynamics/taquito-michelson-encoder"
 import { BigNumber } from "bignumber.js"
 import { Buffer } from "buffer"
 import { bob, alice, eve, mallory, david, oscar } from '../scripts/sandbox/accounts'
