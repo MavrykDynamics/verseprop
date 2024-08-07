@@ -1,7 +1,7 @@
 version: '3.6'
 services:
   db:
-    image: postgres:14
+    image: timescale/timescaledb:latest-pg15
     shm_size: 1g
     restart: always
     environment:
@@ -19,7 +19,7 @@ services:
   api:
     restart: always
     platform: linux/amd64
-    image: ghcr.io/baking-bad/bcdhub-api:${TAG}
+    image: ghcr.io/mavryk-network/bcdhub-api:4.7.7
     environment:
       - BCD_ENV=sandbox
       - GIN_MODE=debug
@@ -34,13 +34,15 @@ services:
     volumes:
       - bcdshare:/etc/bcd
     links:
-      - 'flextesa:sandbox'
+      - 'flexmasa:sandbox'
+    expose:
+      - 14000/tcp
     logging: *bcd-logging
 
   indexer:
     restart: always
     platform: linux/amd64
-    image: ghcr.io/baking-bad/bcdhub-indexer:${TAG}
+    image: ghcr.io/mavryk-network/bcdhub-indexer:4.7.7
     environment:
       - BCD_ENV=sandbox
       - POSTGRES_USER=root
@@ -50,29 +52,19 @@ services:
     depends_on:
       - db
     links:
-      - 'flextesa:sandbox'
+      - 'flexmasa:sandbox'
     volumes:
       - bcdshare:/etc/bcd
     logging: *bcd-logging
 
-  flextesa:
+  flexmasa:
     container_name: mavryk-sandbox
     restart: always
-    image: oxheadalpha/flextesa:20230313
-    command: >
-      flextesa mini-net 
-      --root "/tmp/mini-box" 
-      --size 3
-      --set-history-mode N000:archive 
-      --number-of-boot 3
-      --balance-of-bootstrap-accounts tez:100_000_000 
-      --time-b 3 
-      --add-bootstrap-account="alice,edpkvGfYw3LyB1UcCahKQk4rF2tvbMUk8GFiTuMjL75uGXrpvKXhjn,tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb,unencrypted:edsk3QoqBuvdamxouPhin7swCvkQNgq4jP5KZPbwWNnwdZpSpJiEbq@2_000_000_000_000" 
-      --add-bootstrap-account="bob,edpkurPsQ8eUApnLUJ9ZPDvu98E8VNj4KtJa1aZr16Cr5ow5VHKnz4,tz1aSkwEot3L2kmUvcoxzjMomb9mvBNuzFK6,unencrypted:edsk3RFfvaFaxbHx8BMtEW1rKQcPtDML3LXjNqMNLCzC3wLC1bWbAt@2_000_000_000_000" 
-      --until-level 200_000_000 
-      --protocol-kind "Mumbai"
+    image: registry.gitlab.com/mavryk-network/flexmasa:atlas-update-run
+    command: atlasbox start
     environment:
-      - flextesa_node_cors_origin=*
+      - block_time=3
+      - flexmasa_node_cors_origin=*
     ports:
       - 127.0.0.1:20000:20000
       - 127.0.0.1:8732:20000
@@ -85,7 +77,7 @@ services:
     container_name: sandbox-gui
     restart: always
     platform: linux/amd64
-    image: ghcr.io/baking-bad/bcdhub-gui:${TAG}
+    image: ghcr.io/mavryk-network/bcdhub-gui:4.7.7
     depends_on:
       - api
     ports:

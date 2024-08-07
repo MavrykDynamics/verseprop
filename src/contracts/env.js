@@ -13,6 +13,30 @@ module.exports = {
   // syncInterval: 5000,
   // confirmTimeout: 1800000,
 
+  contracts : {
+    mainnet : {
+      superAdmin            : "",
+      kyc                   : "",
+      usdt                  : "", // usdt
+
+      debtController        : ""
+    },
+    atlasnet : {
+      superAdmin            : "KT1A8ee6yBDDfEtac5k798zCW5bBgmuw1AEe",
+      kyc                   : "KT1RzBPUrktjuMGKYidfFC5t8BGJ8MSZaAp7",
+      usdt                  : "KT1StUZzJ34MhSNjkQMSyvZVrR9ppkHMFdFf", // usdt
+
+      debtController        : ""
+    },
+    local : {
+      superAdmin            : "",
+      kyc                   : "",
+      usdt                  : "",
+
+      debtController        : ""
+    }
+  },
+
   buildDir: "build",
   michelsonBuildDir : "contracts/compiled",
   migrationsDir: "migrations",

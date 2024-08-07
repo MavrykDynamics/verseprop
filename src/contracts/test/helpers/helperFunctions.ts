@@ -1,4 +1,4 @@
-const { InMemorySigner } = require("@taquito/signer");
+const { InMemorySigner } = require("@mavrykdynamics/taquito-signer");
 import { BigNumber } from "bignumber.js"
 
 // ------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ export async function signerFactory (tezos, pk) {
 }
 
 
-type tezType = Unit;
+type mavType = Unit;
 type fa12TokenType = string; // assuming address is represented by a string
 type fa2TokenType = {
     tokenContractAddress: string;
@@ -39,7 +39,7 @@ type fa2TokenType = {
 }
 
 export type currencyType = 
-    | { kind: "tez", value: tezType } 
+    | { kind: "mav", value: mavType } 
     | { kind: "fa12", value: fa12TokenType }
     | { kind: "fa2", value: fa2TokenType };
     

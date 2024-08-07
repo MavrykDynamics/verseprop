@@ -6,8 +6,7 @@
 const fixedPointAccuracy : nat = 1_000_000_000_000_000_000_000_000_000n // 10^27
 
 // for entries where a default address is required
-const zeroAddress : address = ("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg" : address);
-const burnAddress : address = ("tz1ZZZZZZZZZZZZZZZZZZZZZZZZZZZZNkiRg" : address);
+const burnAddress : address = ("mv2burnburnburnburnburnburnbur7hzNeg" : address);
 
 // zero timestamp
 const zeroTimestamp : timestamp = ("1970-01-01t00:00:00Z" : timestamp);
