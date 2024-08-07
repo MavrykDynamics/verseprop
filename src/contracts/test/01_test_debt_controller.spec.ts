@@ -24,7 +24,7 @@ import { rwaTokenNonFungibleStorage } from '../storage/rwaTokenNonFungibleStorag
 // Contract Helpers
 // ------------------------------------------------------------------------------
 
-import { bob, alice, eve, mallory, oscar } from '../scripts/sandbox/accounts'
+import { bob, alice, eve, mallory, oscar, trudy } from '../scripts/sandbox/accounts'
 import { 
     signerFactory, 
     wait,
@@ -305,6 +305,12 @@ describe('Test: Debt Controller', async () => {
                 },
                 {
                     memberAddress : mallory.pkh,
+                    country : country,
+                    region : region,
+                    investorType : investorType
+                },
+                {
+                    memberAddress : oscar.pkh,
                     country : country,
                     region : region,
                     investorType : investorType
@@ -711,5 +717,289 @@ describe('Test: Debt Controller', async () => {
 
     })
 
-    
+    describe('debtNFT', function () {
+
+        before('deploy debt nft', async () => {
+
+            rwaTokenNonFungibleStorage.superAdmin = contractDeployments.superAdmin.address;
+            rwaTokenNonFungibleStorage.kycAddress = contractDeployments.kyc.address;
+
+            debtNFT = await GeneralContract.originate(utils.tezos, "rwaTokenNonFungible", rwaTokenNonFungibleStorage);
+
+            debtNFTInstance = await utils.tezos.contract.at(debtNFT.contract.address)
+            debtNFTStorage  = await debtNFTInstance.storage()
+            
+        })
+
+        it('should mint a new NFT to a specified address (KYC-ed user)', async () => {
+            try {
+
+                const tokenURI = Buffer.from("https://example.com/nft/1", 'ascii').toString('hex');
+                
+                nextTokenId = await debtNFTInstance.contractViews.next_token_id().executeView({ viewCaller : admin});
+
+                debtNFTOperation = await debtNFTInstance.methods.mint([
+                    {
+                        token_metadata : tokenURI,
+                        address : debtor
+                    }
+                ]).send();
+                await debtNFTOperation.confirmation();
+
+                debtNFTStorage  = await debtNFTInstance.storage()
+
+                const debtNFTMetadata = await debtNFTStorage.token_metadata.get(nextTokenId);
+                const tokenInfo       = debtNFTMetadata.token_info;
+                const tokenInfoBytes  = await tokenInfo.valueMap.get('""');
+
+                assert.equal(tokenInfoBytes, tokenURI);
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should mint a new NFT to a specified address (non-KYC-ed user)', async () => {
+            try {
+
+                const tokenURI = Buffer.from("https://example.com/nft/2", 'ascii').toString('hex');
+                
+                debtNFTOperation = await debtNFTInstance.methods.mint([
+                    {
+                        token_metadata : tokenURI,
+                        address : trudy.pkh
+                    }
+                ]).send();
+                await debtNFTOperation.confirmation();
+
+                debtNFTStorage  = await debtNFTInstance.storage()
+
+                const debtNFTMetadata = await debtNFTStorage.token_metadata.get(nextTokenId + 1);
+                const tokenInfo       = debtNFTMetadata.token_info;
+                const tokenInfoBytes  = await tokenInfo.valueMap.get('""');
+
+                assert.equal(tokenInfoBytes, tokenURI);
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should prevent non-managers from minting NFTs', async () => {
+            try {
+
+                await signerFactory(tezos, managerSk);
+
+                const tokenURI = Buffer.from("https://example.com/nft/1", 'ascii').toString('hex');
+                
+                debtNFTOperation = await debtNFTInstance.methods.mint([
+                    {
+                        token_metadata : tokenURI,
+                        address : debtor
+                    }
+                ]);
+                await chai.expect(debtNFTOperation.send()).to.be.rejected;
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should allow admin to burn a token', async () => {
+            try {
+                
+                debtNFTOperation = await debtNFTInstance.methods.burn([
+                    {
+                        token_id : nextTokenId,
+                        address : debtor
+                    }
+                ]).send();
+                await debtNFTOperation.confirmation();
+
+                debtNFTStorage  = await debtNFTInstance.storage()
+
+                // note: token metadata is not reset here, but the owner is now the burn address
+                const tokenOwnerOf = await debtNFTInstance.contractViews.owner_of(nextTokenId).executeView({ viewCaller : admin});
+                assert.equal(tokenOwnerOf, burnAddress);
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should freeze and unfreeze a token', async () => {
+            try {
+
+                const tokenURI = Buffer.from("https://example.com/nft/1", 'ascii').toString('hex');
+                
+                nextTokenId = await debtNFTInstance.contractViews.next_token_id().executeView({ viewCaller : admin});
+
+                debtNFTOperation = await debtNFTInstance.methods.mint([
+                    {
+                        token_metadata : tokenURI,
+                        address : debtor
+                    }
+                ]).send();
+                await debtNFTOperation.confirmation();
+
+                debtNFTStorage  = await debtNFTInstance.storage()
+
+                // pause token
+                debtNFTOperation = await debtNFTInstance.methods.pause().send()
+                await debtNFTOperation.confirmation();
+
+                // transfer should fail
+                await signerFactory(tezos, debtorSk)
+                debtNFTOperation = await debtNFTInstance.methods.transfer([
+                    {
+                        from_ : debtor,
+                        txs: [
+                            {
+                                to_: investorOne,
+                                token_id: nextTokenId,
+                                amount: 1,
+                            },
+                        ]
+                    }
+                ]);
+                await chai.expect(debtNFTOperation.send()).to.be.rejected 
+
+                // unpause token
+                await signerFactory(tezos, adminSk)
+                debtNFTOperation = await debtNFTInstance.methods.unpause().send()
+                await debtNFTOperation.confirmation();
+
+                // transfer should work
+                await signerFactory(tezos, debtorSk)
+                debtNFTOperation = await debtNFTInstance.methods.transfer([
+                    {
+                        from_ : debtor,
+                        txs: [
+                            {
+                                to_: investorOne,
+                                token_id: nextTokenId,
+                                amount: 1,
+                            },
+                        ]
+                    }
+                ]).send();
+                await debtNFTOperation.confirmation()
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should prevent non-managers from pausing or unpausing NFTs', async () => {
+            try {
+
+                await signerFactory(tezos, managerSk);
+                
+                debtNFTOperation = await debtNFTInstance.methods.pause()
+                await chai.expect(debtNFTOperation.send()).to.be.rejected;
+
+                debtNFTOperation = await debtNFTInstance.methods.unpause()
+                await chai.expect(debtNFTOperation.send()).to.be.rejected;
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should prevent non-managers from burning NFTs', async () => {
+            try {
+
+                await signerFactory(tezos, managerSk);
+                
+                debtNFTOperation = await debtNFTInstance.methods.burn([
+                    {
+                        token_id : nextTokenId,
+                        address : investorOne
+                    }
+                ]);
+                await chai.expect(debtNFTOperation.send()).to.be.rejected;
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+    })
+
+    describe('debtStorage', function () {
+
+        it('should allow owner to get and add a debt', async () => {
+            try {
+
+                debtId                      = await debtControllerStorage.debtCount
+                const maxAmount             = MAV(5000)
+                const interestRate          = 500; // 5%
+                const term                  = 12; // 12 months
+                user                        = debtor
+                const minInvestmentAmount   = MAV(100)
+                currency                    = "mav"
+                
+                debtControllerOperation = await debtControllerInstance.methods.createDebt(
+                    maxAmount,
+                    interestRate,
+                    term,
+                    user,
+                    minInvestmentAmount,
+                    tokenURI,
+                    currency
+                ).send();
+                await debtControllerOperation.confirmation();
+
+                debtControllerStorage = await debtControllerInstance.storage();
+
+                debt = await debtControllerStorage.debtLedger.get(debtId)
+
+                assert.equal(debt.maxAmount.toNumber()          , maxAmount);
+                assert.equal(debt.interestRate.toNumber()       , interestRate);
+                assert.equal(debt.term.toNumber()               , term);
+                assert.equal(debt.walletAddress                 , user);
+                assert.equal(debt.minInvestmentAmount.toNumber(), minInvestmentAmount);
+                assert.equal(debt.totalInvestment.toNumber()    , 0);
+                assert.equal(debt.tokenURI                      , tokenURI);
+                assert.equal(debt.currency                      , currency);
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should allow admin to set the feeWallet', async () => {
+            try {
+
+                const newFeeWallet = alice.pkh;
+
+                debtControllerOperation = await debtControllerInstance.methods.setFeeWallet(newFeeWallet).send();
+                await debtControllerOperation.confirmation();
+
+                debtControllerStorage = await debtControllerInstance.storage();
+                assert.equal(debtControllerStorage.feeWallet, newFeeWallet)
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+        it('should not allow non-admin to set the feeWallet', async () => {
+            try {
+
+                await signerFactory(tezos, investorOneSk)
+
+                const newFeeWallet = alice.pkh;
+
+                debtControllerOperation = await debtControllerInstance.methods.setFeeWallet(newFeeWallet);
+                await chai.expect(debtControllerOperation.send()).to.be.rejected
+
+            } catch (e) {
+                console.log(e)
+            }
+        })
+
+    })
+
+
 })
