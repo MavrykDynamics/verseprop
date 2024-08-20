@@ -33,8 +33,8 @@
     "setup-debt-controller": "NODE_ENV=development NETWORK_TO_MIGRATE_TO=atlasnet PRODUCTION=true ts-mocha --paths test/interact/00_setup_debt_controller.spec.ts --bail --timeout 900000 --exit",
     "create-new-debt": "NODE_ENV=development NETWORK_TO_MIGRATE_TO=atlasnet PRODUCTION=true ts-mocha --paths test/interact/01_create_new_debt.spec.ts --bail --timeout 900000 --exit",
     "mint-debt-nft": "NODE_ENV=development NETWORK_TO_MIGRATE_TO=atlasnet PRODUCTION=true ts-mocha --paths test/interact/02_mint_debt_nft.spec.ts --bail --timeout 900000 --exit",
-    "create-verse-token": "NODE_ENV=development ts-mocha --paths test/interact/03_create_verse_token.spec.ts --bail --timeout 900000 --exit",
-    "mint-verse-token": "NODE_ENV=development ts-mocha --paths test/interact/04_mint_verse_token.spec.ts --bail --timeout 900000 --exit"
+    "create-verse-token": "NODE_ENV=development NETWORK_TO_MIGRATE_TO=atlasnet PRODUCTION=true ts-mocha --paths test/interact/03_create_verse_token.spec.ts --bail --timeout 900000 --exit",
+    "mint-verse-token": "NODE_ENV=development NETWORK_TO_MIGRATE_TO=atlasnet PRODUCTION=true ts-mocha --paths test/interact/04_mint_verse_token.spec.ts --bail --timeout 900000 --exit"
 
   },
   "author": "tim@mavrykdynamics.io",
