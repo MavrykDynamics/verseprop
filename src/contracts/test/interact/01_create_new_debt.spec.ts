@@ -19,7 +19,6 @@ import { bob, eve, alice, mallory } from '../../scripts/sandbox/accounts.js'
 
 import { 
     signerFactory,
-    updateOperators,
     MAV
 } from '../helpers/helperFunctions'
 

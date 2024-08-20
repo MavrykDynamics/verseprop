@@ -35,6 +35,10 @@ for contract_test in "${CONTRACTS_TEST_ARRAY[@]}"; do
             echo "Running tests for Debt Controller"
             COMMANDS+=("yarn ts-mocha --paths test/01_test_debt_controller.spec.ts --bail --timeout 9000000")
             ;;
+        verseToken)
+            echo "Running tests for Verse Token"
+            COMMANDS+=("yarn ts-mocha --paths test/02_test_verse_token.spec.ts --bail --timeout 9000000")
+            ;;
         dev)
             echo "Running tests for dev"
             COMMANDS+=("yarn ts-mocha --paths test/01_test_debt_controller.spec.ts --bail --timeout 9000000")

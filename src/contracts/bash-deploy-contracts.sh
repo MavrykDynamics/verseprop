@@ -53,6 +53,10 @@ for contract_test in "${CONTRACTS_DEPLOY_ARRAY[@]}"; do
             echo "Deploying RWA Token"
             COMMANDS+=("yarn ts-mocha --paths test/deploy/03_deploy_rwa_token_non_fungible.spec.ts --bail --timeout 9000000 --exit ")
             ;;
+        verseToken)
+            echo "Deploying Verse Token"
+            COMMANDS+=("yarn ts-mocha --paths test/deploy/05_deploy_verse_token.spec.ts --bail --timeout 9000000 --exit ")
+            ;;
         debtController)
             echo "Deploying Debt Controller"
             COMMANDS+=("yarn ts-mocha --paths test/deploy/04_deploy_debt_controller.spec.ts --bail --timeout 9000000 --exit ")
@@ -64,6 +68,7 @@ for contract_test in "${CONTRACTS_DEPLOY_ARRAY[@]}"; do
             COMMANDS+=("yarn ts-mocha --paths test/deploy/02_deploy_kyc.spec.ts --bail --timeout 9000000 --exit ")
             COMMANDS+=("yarn ts-mocha --paths test/deploy/03_deploy_rwa_token_non_fungible.spec.ts --bail --timeout 9000000 --exit ")
             COMMANDS+=("yarn ts-mocha --paths test/deploy/04_deploy_debt_controller.spec.ts --bail --timeout 9000000 --exit ")
+            COMMANDS+=("yarn ts-mocha --paths test/deploy/05_deploy_verse_token.spec.ts --bail --timeout 9000000 --exit ")
             ;;
         *)
             echo "Unknown contract test: $contract_test"
