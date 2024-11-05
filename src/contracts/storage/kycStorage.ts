@@ -14,16 +14,24 @@ const breakGlassConfig = {
 }
 
 const metadata = MichelsonMap.fromLiteral({
-    '': Buffer.from('tezos-storage:data', 'ascii').toString('hex'),
+    '': Buffer.from('mavryk-storage:data', 'ascii').toString('hex'),
     data: Buffer.from(
         JSON.stringify({
-        name: 'KYC Contract',
-        version: 'v1.0.0',
-        authors: ['MAVRYK Dev Team <contact@mavryk.finance>'],
-        source: {
-            tools: ['Ligo', 'Flextesa'],
-            location: 'https://ligolang.org/',
-        },
+            name: 'VerseProp - KYC',
+            version: 'v1.0.0',
+            authors: ['Mavryk Dynamics <info@mavryk.io>'],
+            homepage: "https://www.verseprop.com",
+            license: {
+                name: "MIT"
+            },
+            source: {
+                tools: [
+                    "MavrykLIGO 0.60.0",
+                    "Flexmasa atlas-update-run"
+                ],
+                location: "https://github.com/Mavryk-Dynamics/verseprop"
+            },
+            interfaces: [ 'MIP-16' ],
         }),
         'ascii',
     ).toString('hex'),

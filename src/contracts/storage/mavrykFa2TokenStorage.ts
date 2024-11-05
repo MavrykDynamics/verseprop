@@ -10,33 +10,38 @@ const initialSupply    = new BigNumber(totalSupply); // 20,000 MOCK FA2 Tokens i
 const singleUserSupply = new BigNumber(totalSupply / 6);
 
 const metadata = MichelsonMap.fromLiteral({
-    '': Buffer.from('tezos-storage:data', 'ascii').toString('hex'),
+    '': Buffer.from('mavryk-storage:data', 'ascii').toString('hex'),
     data: Buffer.from(
         JSON.stringify({
+        name: 'VerseProp - Mock FA2',
         version: 'v1.0.0',
-        description: 'MAVRYK FA2',
-        authors: ['MAVRYK Dev Team <contact@mavryk.finance>'],
-        source: {
-            tools: ['Ligo', 'Flextesa'],
-            location: 'https://ligolang.org/',
+        authors: ['Mavryk Dynamics <info@mavryk.io>'],
+        homepage: "https://www.verseprop.com",
+        license: {
+            name: "MIT"
         },
-        interfaces: ['TZIP-7', 'TZIP-12', 'TZIP-16', 'TZIP-21'],
-        errors: [],
-        views: [],
+        source: {
+            tools: [
+                "MavrykLIGO 0.60.0",
+                "Flexmasa atlas-update-run"
+            ],
+            location: "https://github.com/Mavryk-Dynamics/verseprop"
+        },
+        interfaces: [ 'MIP-12', 'MIP-16', 'MIP-21' ],
         assets: [
             {
-            symbol: Buffer.from('FA2').toString('hex'),
-            name: Buffer.from('MAVRYKFA2').toString('hex'),
-            decimals: Buffer.from('6').toString('hex'),
-            icon: Buffer.from('https://mavryk.finance/logo192.png').toString('hex'),
-            shouldPreferSymbol: true,
-            thumbnailUri: 'https://mavryk.finance/logo192.png'
+                symbol: Buffer.from('FA2').toString('hex'),
+                name: Buffer.from('VerseProp Mock FA2').toString('hex'),
+                decimals: Buffer.from('6').toString('hex'),
+                icon: Buffer.from('ipfs://QmZR4FJ4ATgZ1DWRU8Afa5ECAkzRVQumuJd4Bft5iajs73').toString('hex'),
+                shouldPreferSymbol: '74727565',
+                thumbnailUri: Buffer.from('ipfs://QmZR4FJ4ATgZ1DWRU8Afa5ECAkzRVQumuJd4Bft5iajs73').toString('hex')
             }
         ]
         }),
         'ascii',
     ).toString('hex'),
-  })
+})
 
 const ledger = MichelsonMap.fromLiteral({
     [bob.pkh]: singleUserSupply,
@@ -52,11 +57,11 @@ const token_metadata = MichelsonMap.fromLiteral({
         token_id: '0',
         token_info: MichelsonMap.fromLiteral({
             symbol: Buffer.from('FA2').toString('hex'),
-            name: Buffer.from('MAVRYKFA2').toString('hex'),
+            name: Buffer.from('VerseProp Mock FA2').toString('hex'),
             decimals: Buffer.from('6').toString('hex'),
-            icon: Buffer.from('https://mavryk.finance/logo192.png').toString('hex'),
-            shouldPreferSymbol: Buffer.from(new Uint8Array([1])).toString('hex'),
-            thumbnailUri: Buffer.from('https://mavryk.finance/logo192.png').toString('hex')
+            icon: Buffer.from('ipfs://QmZR4FJ4ATgZ1DWRU8Afa5ECAkzRVQumuJd4Bft5iajs73').toString('hex'),
+            shouldPreferSymbol: '74727565',
+            thumbnailUri: Buffer.from('ipfs://QmZR4FJ4ATgZ1DWRU8Afa5ECAkzRVQumuJd4Bft5iajs73').toString('hex')
         }),
     },
 })

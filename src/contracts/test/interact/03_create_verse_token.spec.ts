@@ -94,23 +94,45 @@ describe('Interact: Create Verse Token', async () => {
 
             const _baseTokenURI         = "baseTokenURI";
 
-            const name                  = "name";
-            const symbol                = "symbol";
-
             // prepare storage
 
             const metadata = MichelsonMap.fromLiteral({
-                '': Buffer.from('tezos-storage:data', 'ascii').toString('hex'),
+                '': Buffer.from('mavryk-storage:data', 'ascii').toString('hex'),
                 data: Buffer.from(
                     JSON.stringify({
-                    name: name,
-                    symbol: symbol,
-                    version: 'v1.0.0',
-                    authors: ['MAVRYK Dev Team <contact@mavryk.finance>'],
-                    source: {
-                        tools: ['Ligo', 'Flextesa'],
-                        location: 'https://ligolang.org/',
-                    },
+                        name: 'VerseProp - Verse Prop Token (VP)',
+                        version: 'v1.0.0',
+                        authors: ['Mavryk Dynamics <info@mavryk.io>'],
+                        homepage: "https://www.verseprop.com",
+                        license: {
+                            name: "MIT"
+                        },
+                        source: {
+                            tools: [
+                                "MavrykLIGO 0.60.0",
+                                "Flexmasa atlas-update-run"
+                            ],
+                            location: "https://github.com/Mavryk-Dynamics/verseprop"
+                        },
+                        interfaces: [ 'MIP-12', 'MIP-16', 'MIP-21' ],
+                        assets: [
+                            {
+                                symbol: Buffer.from('VP').toString('hex'),
+                                name: Buffer.from('Verse Prop').toString('hex'),
+                                decimals: Buffer.from('3').toString('hex'),
+                                icon: Buffer.from('ipfs://Qmdou4n4HM5g5EFtRcyN5E5Np824rm3drtUzieiQz9TrN6').toString('hex'),
+                                shouldPreferSymbol: '74727565',
+                                thumbnailUri: Buffer.from('ipfs://Qmdou4n4HM5g5EFtRcyN5E5Np824rm3drtUzieiQz9TrN6').toString('hex'),
+                                subheader: Buffer.from('Financial Asset v2').toString('hex'),
+                                description: Buffer.from('A fractional investment in a single residential loan. Investors can purchase individual units, which provides a more accessible way to invest, spreading both the investment and potential returns across all unit holders.').toString('hex'),
+                                info: {
+                                    "capital diversification": Buffer.from("This opportunity offers fractional investment in a single residential loan. Investors can purchase individual units, which provides a more accessible way to invest, spreading both the investment and potential returns across all unit holders.").toString('hex'),
+                                    "full recourse": Buffer.from("Investors acquire shares in a Special Purpose Vehicle (SPV) that holds direct recourse to the asset, secured by a registered charge on the Land Registry Title.").toString('hex'),
+                                    "first charge loan": Buffer.from("Secured against the asset and overcollateralized, ensuring robust investor protection and reduced risk by providing tangible, verifiable assets that exceed the value of the loan.").toString('hex'),
+                                    "the asset": Buffer.from("The residential property is situated in the Home Counties that surrounds London and sits adjacent to a major transport link with direct access to Central London. Journey time approximately 30 minutes. The property is fully leased to private tenants with a rent guarantee from a local Government alongside an insurance policy. There is also a comprehensive service management solution in place.").toString('hex')
+                                }
+                            }
+                        ]
                     }),
                     'ascii',
                 ).toString('hex'),
